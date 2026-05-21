@@ -1,4 +1,4 @@
-const CACHE = 'da-burgs-v12';
+const CACHE = 'da-burgs-v14';
 const ASSETS = [
   '/',
   '/index.html',
