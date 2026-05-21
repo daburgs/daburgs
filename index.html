@@ -1893,14 +1893,23 @@ function renderList() {
     const el=document.createElement('div');
     el.className='spot-item'+(isSel?' selected':'');
     const dotColor = isWish?'#f97316':'#e800b0';
+    const spotIdx = sorted.indexOf(s);
+    const moveButtons = currentSort==='saved' ? `
+      <div style="display:flex;flex-direction:column;gap:2px;margin-right:6px;flex-shrink:0;">
+        ${spotIdx > 0 ? `<button class="move-btn" data-dir="up" data-sid="${s.id}" style="background:#f0f0f0;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;">↑</button>` : '<div style="width:22px;height:22px;"></div>'}
+        ${spotIdx < sorted.length-1 ? `<button class="move-btn" data-dir="down" data-sid="${s.id}" style="background:#f0f0f0;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;">↓</button>` : '<div style="width:22px;height:22px;"></div>'}
+      </div>` : '';
     el.innerHTML=`
-      <div class="spot-info">
-        <div class="spot-name" style="display:flex;align-items:center;gap:6px">
-          ${isVisited?'<span style="font-size:12px;line-height:1">🍔</span>':`<span style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block"></span>`}
-          ${s.name}
+      <div class="spot-info" style="display:flex;align-items:center;gap:4px">
+        ${moveButtons}
+        <div style="flex:1;min-width:0">
+          <div class="spot-name" style="display:flex;align-items:center;gap:6px">
+            ${isVisited?'<span style="font-size:12px;line-height:1">🍔</span>':`<span style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block"></span>`}
+            ${s.name}
+          </div>
+          <div class="spot-meta">${s.rating}</div>
+          ${showReason?`<div class="spot-reason show">${s.reason}</div>`:''}
         </div>
-        <div class="spot-meta">${s.rating}</div>
-        ${showReason?`<div class="spot-reason show">${s.reason}</div>`:''}
       </div>
       <button class="wish-btn ${isWish?'active':''}" title="${isWish?'Remove from list':'Want to go'}">${isWish?'♥':'♡'}</button>`;
     el.addEventListener('click', e=>{
