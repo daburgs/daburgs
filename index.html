@@ -1895,6 +1895,30 @@ function renderList() {
     list.innerHTML = msg;
     return;
   }
+  // Draw Route button at top of saved tab
+  if (currentSort==='saved' && sorted.length >= 2) {
+    const drawBtn = document.createElement('button');
+    drawBtn.textContent = 'Draw Route';
+    drawBtn.style.cssText = 'width:calc(100% - 28px);margin:10px 14px 4px;background:#111;color:#fff;border:none;border-radius:4px;padding:9px;font-size:10px;font-family:"DM Mono",monospace;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;';
+    drawBtn.addEventListener('click', ()=>{
+      // Use saved spots in current order as route
+      routeStops = [...sorted].slice(0,3);
+      clearRouteLines();
+      drawRouteLine();
+      // Collapse sidebar to show map
+      sidebarOpen = false;
+      document.getElementById('sidebar').classList.add('collapsed');
+      document.getElementById('sidebar-toggle').classList.add('collapsed');
+      const btn = document.getElementById('sidebar-toggle');
+      btn.style.left = '0px';
+      setTimeout(()=>map.invalidateSize(), 300);
+    });
+    list.appendChild(drawBtn);
+    const hint = document.createElement('div');
+    hint.style.cssText = 'font-size:8px;color:#bbb;letter-spacing:0.08em;text-transform:uppercase;text-align:center;padding:0 14px 8px;';
+    hint.textContent = 'Tap ↑ ↓ to set your order · hit Draw Route when ready';
+    list.appendChild(hint);
+  }
   sorted.forEach(s=>{
     const isWish=wishlist.has(s.id), isSel=selectedId===s.id, isVisited=visitedSpots.has(s.id);
     const showReason=currentSort==='top'&&!selectedId;
@@ -1911,7 +1935,30 @@ function renderList() {
         ${showReason?`<div class="spot-reason show">${s.reason}</div>`:''}
       </div>
       <button class="wish-btn ${isWish?'active':''}" title="${isWish?'Remove from list':'Want to go'}">${isWish?'♥':'♡'}</button>`;
-    el.addEventListener('click', e=>{ if(e.target.classList.contains('wish-btn'))return; selectSpot(s.id); });
+    el.addEventListener('click', e=>{
+      if(e.target.classList.contains('wish-btn')) return;
+      if(e.target.classList.contains('move-btn')) return;
+      selectSpot(s.id);
+    });
+    // Move up/down in saved list
+    el.querySelectorAll('.move-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const spotIds = sorted.map(x=>x.id);
+        const idx = spotIds.indexOf(btn.dataset.sid);
+        if (btn.dataset.dir==='up' && idx > 0) {
+          [spotIds[idx-1], spotIds[idx]] = [spotIds[idx], spotIds[idx-1]];
+        } else if (btn.dataset.dir==='down' && idx < spotIds.length-1) {
+          [spotIds[idx], spotIds[idx+1]] = [spotIds[idx+1], spotIds[idx]];
+        }
+        // Rebuild wishlist in new order preserving only saved ids
+        const allWish = [...wishlist];
+        const reordered = spotIds.filter(id=>wishlist.has(id));
+        const rest = allWish.filter(id=>!spotIds.includes(id));
+        wishlist = new Set([...reordered, ...rest]);
+        renderList();
+      });
+    });
     el.querySelector('.wish-btn').addEventListener('click', async e=>{
       e.stopPropagation();
       if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
@@ -1920,6 +1967,51 @@ function renderList() {
       refreshMarkers(); updateSubText(); renderList();
       if (selectedId===s.id) await showPopup(s);
     });
+    // Touch drag for saved tab reordering
+    if (currentSort === 'saved') {
+      let dragStartY, dragEl, dragIdx, savedOrder;
+      el.addEventListener('touchstart', (e)=>{
+        if (e.target.classList.contains('wish-btn')) return;
+        dragStartY = e.touches[0].clientY;
+        dragEl = el;
+        dragIdx = [...list.querySelectorAll('.spot-item')].indexOf(el);
+        el.style.background = '#f0f0f0';
+      }, { passive:true });
+      el.addEventListener('touchmove', (e)=>{
+        if (!dragEl) return;
+        e.preventDefault();
+        const dy = e.touches[0].clientY - dragStartY;
+        dragEl.style.transform = `translateY(${dy}px)`;
+        dragEl.style.zIndex = '999';
+        dragEl.style.opacity = '0.8';
+        dragEl.style.position = 'relative';
+      }, { passive:false });
+      el.addEventListener('touchend', (e)=>{
+        if (!dragEl) return;
+        const dy = e.changedTouches[0].clientY - dragStartY;
+        dragEl.style.transform = '';
+        dragEl.style.zIndex = '';
+        dragEl.style.opacity = '1';
+        dragEl.style.position = '';
+        dragEl.style.background = '';
+        const itemH = 60;
+        const steps = Math.round(dy / itemH);
+        if (steps !== 0) {
+          // Reorder wishlist array
+          const wishArr = [...wishlist];
+          const spotIds = sorted.map(x=>x.id);
+          const fromId = spotIds[dragIdx];
+          const newIdx = Math.max(0, Math.min(spotIds.length-1, dragIdx + steps));
+          spotIds.splice(dragIdx, 1);
+          spotIds.splice(newIdx, 0, fromId);
+          // Rebuild wishlist in new order
+          wishlist = new Set(spotIds.filter(id=>wishlist.has(id)));
+          renderList();
+        }
+        dragEl = null;
+      });
+    }
+
     list.appendChild(el);
   });
 }
