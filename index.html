@@ -74,8 +74,8 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 /* SIDEBAR TOGGLE */
 #sidebar-toggle {
   position:fixed; top:50%; transform:translateY(-50%);
-  width:28px; height:56px; background:#111; border:2px solid #e800b0;
-  border-left:none; border-radius:0 12px 12px 0;
+  width:26px; height:52px; background:#111; border:2px solid #e800b0;
+  border-left:none; border-radius:0 10px 10px 0;
   cursor:pointer; z-index:9999;
   display:flex; align-items:center; justify-content:center;
   box-shadow:4px 0 16px rgba(232,0,176,0.3);
@@ -158,6 +158,13 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
   transition:all 0.15s; display:none;
 }
 #popup-log-btn:hover { background:#c700a0; }
+#popup-route-btn {
+  background:transparent; border:1px solid #555; color:#aaa;
+  border-radius:4px; padding:7px 14px; font-size:11px; cursor:pointer;
+  font-family:'DM Mono',monospace; white-space:nowrap; letter-spacing:0.06em;
+  transition:all 0.15s;
+}
+#popup-route-btn:hover { border-color:#e800b0; color:#e800b0; }
 #popup-close {
   background:transparent; border:1px solid #333; color:#555;
   border-radius:4px; padding:7px 14px; font-size:11px; cursor:pointer;
@@ -225,6 +232,66 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
   -webkit-tap-highlight-color:transparent;
 }
 .star.on { color:#f97316; }
+
+
+
+/* BURGER ROUTE */
+#route-btn {
+  position:fixed; bottom:80px; right:14px; z-index:1000;
+  width:44px; height:44px; background:#111; border:2px solid #e800b0;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 2px 12px rgba(232,0,176,0.4);
+  font-size:18px; -webkit-tap-highlight-color:transparent;
+  transition:background 0.15s;
+}
+#route-btn:active { background:#e800b0; }
+#route-panel {
+  position:fixed; bottom:0; left:0; right:0; background:#111;
+  border-top:3px solid #e800b0; padding:16px 20px 20px;
+  z-index:2001; transform:translateY(100%);
+  transition:transform 0.25s cubic-bezier(.4,0,.2,1);
+}
+#route-panel.visible { transform:translateY(0); }
+#route-title { font-family:'Playfair Display',serif; font-size:16px; color:#fff; margin-bottom:12px; }
+#route-stops { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.route-stop {
+  display:flex; align-items:center; gap:10px;
+  background:#1a1a1a; border:1px solid #2a2a2a; border-radius:6px; padding:8px 12px;
+}
+.route-stop-num { color:#e800b0; font-size:11px; font-weight:700; width:16px; flex-shrink:0; }
+.route-stop-name { flex:1; font-size:11px; color:#f0ebe0; }
+.route-stop-remove { background:none; border:none; color:#555; cursor:pointer; font-size:14px; padding:0; }
+#route-actions { display:flex; gap:8px; }
+.route-action-btn {
+  flex:1; background:transparent; border:1px solid #444; color:#aaa;
+  border-radius:4px; padding:8px; font-size:10px; cursor:pointer;
+  font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase;
+}
+.route-action-btn.primary { border-color:#e800b0; color:#e800b0; }
+#route-empty { font-size:10px; color:#555; text-align:center; padding:8px 0; letter-spacing:0.08em; text-transform:uppercase; }
+
+/* TREASURE CHEST */
+#treasure-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.85);
+  z-index:5000; display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:20px;
+}
+#treasure-overlay.hidden { display:none; }
+#treasure-box {
+  font-size:80px; cursor:pointer; animation:bounce 0.6s infinite alternate;
+  user-select:none;
+}
+@keyframes bounce { from { transform:scale(1) rotate(-5deg); } to { transform:scale(1.15) rotate(5deg); } }
+#treasure-msg {
+  font-family:'Playfair Display',serif; font-size:22px; color:#fff;
+  text-align:center; line-height:1.4;
+}
+#treasure-sub { font-size:11px; color:#888; letter-spacing:0.1em; text-transform:uppercase; text-align:center; }
+#treasure-claim {
+  background:#e800b0; color:#fff; border:none; border-radius:6px;
+  padding:12px 28px; font-size:12px; font-family:'DM Mono',monospace;
+  letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;
+}
 
 /* LEADERBOARD */
 #leaderboard-panel { position:fixed; inset:0; background:#fff; z-index:4000; display:flex; flex-direction:column; }
@@ -327,6 +394,7 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
       </div>
       <div id="popup-actions">
         <button id="popup-log-btn">Log a Burger</button>
+        <button id="popup-route-btn">+ Route</button>
         <button id="popup-wantto">Want to Go</button>
         <button id="popup-close">Close</button>
       </div>
@@ -347,7 +415,8 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
     <div class="modal-sub" id="auth-sub">welcome back to da burgs</div>
     <div class="field" id="display-name-field" style="display:none">
       <label>Display Name</label>
-      <input type="text" id="auth-display-name" placeholder="how the world knows you"/>
+      <input type="text" id="auth-display-name" placeholder="e.g. CrispyBunKluck"/>
+      <div id="name-suggestions" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;"></div>
     </div>
     <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="you@example.com"/></div>
     <div class="field"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••"/></div>
@@ -405,6 +474,27 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
     <div class="modal-err" id="sub-err"></div>
     <button class="modal-btn" id="sub-submit">Submit for Review</button>
   </div>
+</div>
+
+<!-- BURGER ROUTE BUTTON -->
+<button id="route-btn" title="Plan a burger route">🗺</button>
+
+<!-- BURGER ROUTE PANEL -->
+<div id="route-panel">
+  <div id="route-title">Burger Route</div>
+  <div id="route-stops"><div id="route-empty">Add up to 3 spots to plan your route</div></div>
+  <div id="route-actions">
+    <button class="route-action-btn" id="route-clear">Clear</button>
+    <button class="route-action-btn primary" id="route-go">Draw Route</button>
+  </div>
+</div>
+
+<!-- TREASURE CHEST -->
+<div id="treasure-overlay" class="hidden">
+  <div id="treasure-box">🎁</div>
+  <div id="treasure-msg">You unlocked a new category!</div>
+  <div id="treasure-sub">Tap the chest to open it</div>
+  <button id="treasure-claim" style="display:none">Claim your reward</button>
 </div>
 
 <!-- LEADERBOARD PANEL -->
@@ -593,22 +683,49 @@ async function loadSpotMenu(spotId) {
     return;
   }
 
-  // Deduplicate by name, count occurrences
-  const counts = {};
-  data.forEach(l => { counts[l.burger_name] = (counts[l.burger_name]||0)+1; });
+  // Deduplicate by name, count occurrences + flag tracking
+  const counts = {}, flagged = {};
+  data.forEach(l => {
+    counts[l.burger_name] = (counts[l.burger_name]||0)+1;
+    if (l.flagged) flagged[l.burger_name] = (flagged[l.burger_name]||0)+1;
+  });
 
   listEl.innerHTML = '';
   Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([name, count]) => {
     const isMyLog = currentUser && data.some(l=>l.burger_name===name && l.user_id===currentUser.id);
+    const isFlagged = (flagged[name]||0) >= 3;
+    const submitter = data.find(l=>l.burger_name===name);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:5px;';
+
     const chip = document.createElement('div');
-    chip.className = 'menu-item' + (isMyLog?' my-log':'');
-    chip.textContent = count > 1 ? `${name} (${count})` : name;
-    chip.title = 'Click to log this burger';
-    chip.addEventListener('click', () => {
+    chip.className = 'menu-item' + (isMyLog?' my-log':'') + (isFlagged?' flagged-burger':'');
+    chip.style.cssText = isFlagged ? 'text-decoration:line-through;opacity:0.6;font-size:10px;' : '';
+    chip.textContent = isFlagged ? `🤡 ${name} (${count})` : count > 1 ? `${name} (${count})` : name;
+    chip.title = isFlagged ? 'Flagged as fake' : 'Click to log this burger';
+    if (!isFlagged) chip.addEventListener('click', () => {
       document.getElementById('log-burger-name').value = name;
       openLogModal(SPOTS.find(s=>s.id===spotId));
     });
-    listEl.appendChild(chip);
+    row.appendChild(chip);
+
+    // Verify/flag buttons for signed-in users who aren't the submitter
+    if (currentUser && submitter && submitter.user_id !== currentUser.id && !isFlagged) {
+      const flagBtn = document.createElement('button');
+      flagBtn.textContent = '🚩';
+      flagBtn.title = 'Flag as fake';
+      flagBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:12px;opacity:0.5;padding:0;';
+      flagBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await authApi(`/rest/v1/burger_logs?spot_id=eq.${spotId}&burger_name=eq.${encodeURIComponent(name)}`, {
+          method:'PATCH', headers:authHeaders({'Prefer':'return=minimal'}),
+          body:JSON.stringify({ flagged:true })
+        });
+        await loadSpotMenu(spotId);
+      });
+      row.appendChild(flagBtn);
+    }
+    listEl.appendChild(row);
   });
 }
 
@@ -647,6 +764,10 @@ document.getElementById('popup-log-btn').addEventListener('click', ()=>{
   const s = SPOTS.find(x=>x.id===selectedId);
   if (s) openLogModal(s);
 });
+document.getElementById('popup-route-btn').addEventListener('click', ()=>{
+  const s = SPOTS.find(x=>x.id===selectedId);
+  if (s) addToRoute(s);
+});
 
 document.getElementById('log-close').addEventListener('click', ()=>
   document.getElementById('log-modal').classList.add('hidden'));
@@ -678,9 +799,10 @@ document.getElementById('log-submit').addEventListener('click', async ()=>{
 
   if (ok) {
     document.getElementById('log-modal').classList.add('hidden');
-    // Update count + visited
+    const prevCount = myBurgerCount;
     myBurgerCount++;
     visitedSpots.add(spotId);
+    checkTreasureUnlock(prevCount, myBurgerCount);
     const bc = document.getElementById('burger-count');
     bc.textContent = `🍔 ${myBurgerCount}`;
     bc.style.display = 'block';
@@ -848,8 +970,34 @@ function resetAuthModal() {
     document.getElementById('auth-submit').textContent='Sign Up';
     document.getElementById('auth-toggle-wrap').innerHTML='Have an account? <a id="auth-toggle">Sign in</a>';
     dnf.style.display='block';
+    showUsernameSuggestions();
   }
   document.getElementById('auth-toggle').addEventListener('click', ()=>{ authMode=authMode==='signin'?'signup':'signin'; resetAuthModal(); });
+}
+
+
+// ── USERNAME GENERATOR ───────────────────────────────────────────
+const BH_ADJECTIVES = ['Crispy','Saucy','Juicy','Smoky','Toasty','Melty','Beefy','Tangy','Zesty','Sloppy','Double','Triple','Loaded','Secret','Spicy'];
+const BH_NOUNS = ['Bun','Patty','Stack','Smash','Wedge','Ring','Pickle','Sauce','Crust','Burghead','Flipper','Griller','Chomper','Muncher','Stacker'];
+function genUsername() {
+  const a = BH_ADJECTIVES[Math.floor(Math.random()*BH_ADJECTIVES.length)];
+  const n = BH_NOUNS[Math.floor(Math.random()*BH_NOUNS.length)];
+  const num = Math.floor(Math.random()*99)+1;
+  return `${a}${n}${num}`;
+}
+function showUsernameSuggestions() {
+  const el = document.getElementById('name-suggestions');
+  if (!el) return;
+  el.innerHTML = '';
+  for (let i=0; i<4; i++) {
+    const name = genUsername();
+    const chip = document.createElement('div');
+    chip.className = 'menu-item';
+    chip.textContent = name;
+    chip.style.cssText = 'font-size:10px;padding:3px 8px;cursor:pointer;background:#f5f5f5;border:1px solid #ddd;color:#111;border-radius:4px;';
+    chip.addEventListener('click', ()=>{ document.getElementById('auth-display-name').value = name; });
+    el.appendChild(chip);
+  }
 }
 
 document.getElementById('auth-submit').addEventListener('click', async ()=>{
@@ -913,6 +1061,115 @@ document.getElementById('sub-submit').addEventListener('click', async ()=>{
     alert('Submitted! We\'ll review and add it to the map soon.');
   } else { errEl.textContent='Submission failed.'; }
   btn.disabled=false; btn.textContent='Submit for Review';
+});
+
+
+// ── TREASURE CHEST ───────────────────────────────────────────────
+const UNLOCK_THRESHOLDS = [20, 50, 100, 200];
+const UNLOCK_CATEGORIES = ['Pizza', 'Tacos', 'Ramen', 'BBQ', 'Fried Chicken', 'Bar Bites', 'Hidden Gems'];
+
+function checkTreasureUnlock(prevCount, newCount) {
+  const unlocked = UNLOCK_THRESHOLDS.filter(t => prevCount < t && newCount >= t);
+  if (unlocked.length > 0) showTreasure(unlocked[0]);
+}
+
+function showTreasure(threshold) {
+  const overlay = document.getElementById('treasure-overlay');
+  const box = document.getElementById('treasure-box');
+  const msg = document.getElementById('treasure-msg');
+  const sub = document.getElementById('treasure-sub');
+  const claim = document.getElementById('treasure-claim');
+
+  msg.textContent = `${threshold} burgers! You earned a new food category!`;
+  sub.textContent = 'Tap the chest to open it';
+  claim.style.display = 'none';
+  box.textContent = '🎁';
+  overlay.classList.remove('hidden');
+
+  box.onclick = () => {
+    box.textContent = '🎉';
+    box.style.animation = 'none';
+    const cat = UNLOCK_CATEGORIES[Math.floor(Math.random()*UNLOCK_CATEGORIES.length)];
+    msg.textContent = `You unlocked: ${cat}!`;
+    sub.textContent = 'You can now submit ' + cat + ' spots to the map';
+    claim.style.display = 'block';
+    claim.onclick = () => overlay.classList.add('hidden');
+  };
+}
+
+
+// ── BURGER ROUTE PLANNER ─────────────────────────────────────────
+let routeStops = [], routeLines = [];
+let routePanelOpen = false;
+
+document.getElementById('route-btn').addEventListener('click', ()=>{
+  routePanelOpen = !routePanelOpen;
+  document.getElementById('route-panel').classList.toggle('visible', routePanelOpen);
+});
+
+function addToRoute(spot) {
+  if (routeStops.find(s=>s.id===spot.id)) return;
+  if (routeStops.length >= 3) { alert('Max 3 stops per route!'); return; }
+  routeStops.push(spot);
+  renderRouteStops();
+  if (!routePanelOpen) {
+    routePanelOpen = true;
+    document.getElementById('route-panel').classList.add('visible');
+  }
+}
+
+function renderRouteStops() {
+  const el = document.getElementById('route-stops');
+  if (!routeStops.length) {
+    el.innerHTML = '<div id="route-empty">Add up to 3 spots to plan your route</div>';
+    return;
+  }
+  el.innerHTML = '';
+  routeStops.forEach((s,i) => {
+    const row = document.createElement('div');
+    row.className = 'route-stop';
+    row.innerHTML = `<span class="route-stop-num">${i+1}</span><span class="route-stop-name">${s.name}</span><button class="route-stop-remove" data-id="${s.id}">✕</button>`;
+    row.querySelector('.route-stop-remove').addEventListener('click', ()=>{
+      routeStops = routeStops.filter(x=>x.id!==s.id);
+      clearRouteLines();
+      renderRouteStops();
+    });
+    el.appendChild(row);
+  });
+}
+
+function clearRouteLines() {
+  routeLines.forEach(l=>map.removeLayer(l));
+  routeLines = [];
+}
+
+document.getElementById('route-clear').addEventListener('click', ()=>{
+  routeStops = [];
+  clearRouteLines();
+  renderRouteStops();
+});
+
+document.getElementById('route-go').addEventListener('click', ()=>{
+  if (routeStops.length < 2) { alert('Add at least 2 stops!'); return; }
+  clearRouteLines();
+  const coords = routeStops.map(s=>[s.lat,s.lng]);
+  const line = L.polyline(coords, {
+    color:'#e800b0', weight:3, opacity:0.8,
+    dashArray:'6,8'
+  }).addTo(map);
+  routeLines.push(line);
+  map.fitBounds(line.getBounds(), { padding:[40,40] });
+  // Add numbered markers
+  routeStops.forEach((s,i) => {
+    const m = L.divIcon({
+      className:'',
+      html:`<div style="width:22px;height:22px;background:#e800b0;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:DM Mono,monospace;">${i+1}</div>`,
+      iconSize:[22,22], iconAnchor:[11,11]
+    });
+    routeLines.push(L.marker([s.lat,s.lng],{icon:m}).addTo(map));
+  });
+  routePanelOpen = false;
+  document.getElementById('route-panel').classList.remove('visible');
 });
 
 // ── LEADERBOARD ──────────────────────────────────────────────────
