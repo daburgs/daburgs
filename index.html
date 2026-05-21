@@ -228,6 +228,55 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 
 
 
+
+/* 8 BALL */
+#ball-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.92);
+  z-index:5000; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:24px;
+}
+#ball-overlay.hidden { display:none; }
+#ball-emoji {
+  font-size:100px; line-height:1; cursor:pointer;
+  transition:transform 0.1s;
+  filter:drop-shadow(0 0 30px rgba(232,0,176,0.5));
+}
+#ball-emoji.shaking {
+  animation:shake 0.5s ease-in-out;
+}
+@keyframes shake {
+  0%,100% { transform:rotate(0deg) scale(1); }
+  15% { transform:rotate(-15deg) scale(1.1); }
+  30% { transform:rotate(15deg) scale(1.1); }
+  45% { transform:rotate(-10deg) scale(1.05); }
+  60% { transform:rotate(10deg) scale(1.05); }
+  75% { transform:rotate(-5deg) scale(1.02); }
+  90% { transform:rotate(5deg) scale(1.02); }
+}
+#ball-msg {
+  font-family:'Playfair Display',serif;
+  font-size:22px; color:#fff; text-align:center;
+  max-width:280px; line-height:1.4;
+  opacity:0; transition:opacity 0.4s;
+}
+#ball-msg.visible { opacity:1; }
+#ball-spot {
+  font-size:13px; color:#e800b0; text-align:center;
+  letter-spacing:0.08em; text-transform:uppercase;
+  opacity:0; transition:opacity 0.4s 0.2s;
+}
+#ball-spot.visible { opacity:1; }
+#ball-hint {
+  font-size:9px; color:#444; letter-spacing:0.12em;
+  text-transform:uppercase; text-align:center;
+}
+#ball-close {
+  background:transparent; border:1px solid #333; color:#666;
+  border-radius:4px; padding:8px 20px; font-size:10px;
+  cursor:pointer; font-family:'DM Mono',monospace;
+  letter-spacing:0.08em; text-transform:uppercase;
+}
+#ball-close:hover { border-color:#e800b0; color:#e800b0; }
 /* BURGER ROUTE */
 #route-btn {
   position:fixed; bottom:160px; right:14px; z-index:1000;
@@ -598,8 +647,17 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
   </div>
 </div>
 
+<!-- 8 BALL -->
+<div id="ball-overlay" class="hidden">
+  <div id="ball-emoji">🎱</div>
+  <div id="ball-msg"></div>
+  <div id="ball-spot"></div>
+  <div id="ball-hint">tap the ball</div>
+  <button id="ball-close">close</button>
+</div>
+
 <!-- BURGER ROUTE BUTTON -->
-<button id="route-btn" title="Plan a burger route">🗺</button>
+<button id="route-btn" title="da Burgs 8 Ball">🎱</button>
 
 <!-- BURGER ROUTE PANEL -->
 <div id="route-panel">
@@ -631,8 +689,12 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 <div id="admin-panel" class="hidden">
   <div id="admin-header">
     <h2>Admin · Pending</h2>
-    <button class="hdr-btn" id="btn-kpi" style="background:transparent;border:1px solid #555;color:#aaa;margin-left:8px;">Analytics</button>
-    <button class="close-admin" id="close-admin">Close</button>
+    <div style="display:flex;gap:6px;align-items:center;margin-left:auto;">
+      <button id="mode-8ball" class="hdr-btn" style="font-size:11px;" onclick="saveBtnMode('8ball')">🎱</button>
+      <button id="mode-route" class="hdr-btn" style="font-size:11px;" onclick="saveBtnMode('route')">🗺</button>
+      <button class="hdr-btn" id="btn-kpi" style="background:transparent;border:1px solid #555;color:#aaa;">Analytics</button>
+      <button class="close-admin" id="close-admin">Close</button>
+    </div>
   </div>
   <div id="admin-list"></div>
 </div>
@@ -768,7 +830,7 @@ async function loadUserData() {
   }
 
   const { ok:ok1, data:saves } = await authApi('/rest/v1/saves?select=spot_id');
-  if (ok1 && Array.isArray(saves)) wishlist = new Set(saves.map(r=>r.spot_id));
+  if (ok1 && Array.isArray(saves)) { wishlist = new Set(saves.map(r=>r.spot_id)); savedOrder = saves.map(r=>r.spot_id); }
 
   const { ok:ok2, data:logs } = await authApi(`/rest/v1/burger_logs?user_id=eq.${currentUser.id}&select=spot_id,id`);
   if (ok2 && Array.isArray(logs)) {
@@ -960,9 +1022,11 @@ document.getElementById('popup-wantto').addEventListener('click', async ()=>{
   const id = selectedId;
   if (wishlist.has(id)) {
     wishlist.delete(id);
+    savedOrder = savedOrder.filter(x=>x!==id);
     await authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${id}`, { method:'DELETE' });
   } else {
     wishlist.add(id);
+    savedOrder.push(id);
     await authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:id }) });
   }
   refreshMarkers(); updateSubText();
@@ -1245,11 +1309,7 @@ function showRouteMsg(msg) {
   setTimeout(()=>{ el.style.display='none'; }, 2500);
 }
 
-document.getElementById('route-btn').addEventListener('click', ()=>{
-  routePanelOpen = !routePanelOpen;
-  document.getElementById('route-panel').classList.toggle('visible', routePanelOpen);
-  document.getElementById('popup').classList.remove('visible');
-});
+
 
 function addToRoute(spot) {
   if (routeStops.find(s=>s.id===spot.id)) return;
@@ -1781,6 +1841,98 @@ async function openKPI() {
 document.getElementById('close-kpi').addEventListener('click', ()=>
   document.getElementById('kpi-panel').classList.add('hidden'));
 
+
+// ── MAGIC 8 BALL ─────────────────────────────────────────────────
+let btnMode = '8ball'; // '8ball' or 'route' — set by admin
+
+const BALL_PHRASES = [
+  "The patty has spoken —",
+  "All signs point to",
+  "Don't overthink it.",
+  "Your bun is calling from",
+  "It is certain —",
+  "Outlook juicy:",
+  "The beef don't lie —",
+  "Without a doubt:",
+  "Signs point to",
+  "Go. Now. Trust the ball —",
+];
+
+function shakeBall() {
+  const unvisited = SPOTS.filter(s => !visitedSpots.has(s.id));
+  const pool = unvisited.length > 0 ? unvisited : SPOTS;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const phrase = BALL_PHRASES[Math.floor(Math.random() * BALL_PHRASES.length)];
+
+  const emoji = document.getElementById('ball-emoji');
+  const msg   = document.getElementById('ball-msg');
+  const spot  = document.getElementById('ball-spot');
+  const hint  = document.getElementById('ball-hint');
+
+  // Reset
+  msg.classList.remove('visible');
+  spot.classList.remove('visible');
+  hint.textContent = '';
+
+  // Shake
+  emoji.classList.remove('shaking');
+  void emoji.offsetWidth; // force reflow
+  emoji.classList.add('shaking');
+
+  setTimeout(() => {
+    msg.textContent = phrase;
+    spot.textContent = pick.name;
+    msg.classList.add('visible');
+    spot.classList.add('visible');
+    hint.textContent = 'tap again to reshake · tap spot name to go there';
+
+    // Make spot name tappable
+    spot.style.cursor = 'pointer';
+    spot.onclick = () => {
+      document.getElementById('ball-overlay').classList.add('hidden');
+      selectSpot(pick.id);
+    };
+  }, 550);
+}
+
+document.getElementById('ball-emoji').addEventListener('click', shakeBall);
+document.getElementById('ball-close').addEventListener('click', () => {
+  document.getElementById('ball-overlay').classList.add('hidden');
+});
+
+// Admin mode toggle — load from Supabase settings
+async function loadBtnMode() {
+  const { ok, data } = await api('/rest/v1/app_settings?key=eq.btn_mode&select=value');
+  if (ok && data.length) {
+    btnMode = data[0].value;
+    updateRouteBtn();
+  }
+}
+
+function updateRouteBtn() {
+  const btn = document.getElementById('route-btn');
+  if (btnMode === '8ball') {
+    btn.textContent = '🎱';
+    btn.title = 'da Burgs 8 Ball';
+  } else {
+    btn.textContent = '🗺';
+    btn.title = 'Plan a burger route';
+  }
+}
+
+document.getElementById('route-btn').addEventListener('click', () => {
+  if (btnMode === '8ball') {
+    document.getElementById('ball-overlay').classList.remove('hidden');
+    document.getElementById('ball-msg').classList.remove('visible');
+    document.getElementById('ball-spot').classList.remove('visible');
+    document.getElementById('ball-hint').textContent = 'tap the ball';
+  } else {
+    routePanelOpen = !routePanelOpen;
+    document.getElementById('route-panel').classList.toggle('visible', routePanelOpen);
+    document.getElementById('popup').classList.remove('visible');
+  }
+});
+
 // ── LEADERBOARD ──────────────────────────────────────────────────
 async function openLeaderboard() {
   document.getElementById('leaderboard-panel').classList.remove('hidden');
@@ -1841,6 +1993,18 @@ async function openAdmin() {
     list.appendChild(el);
   });
 }
+
+// Admin btn mode toggle
+async function saveBtnMode(mode) {
+  btnMode = mode;
+  updateRouteBtn();
+  // Upsert to app_settings
+  await authApi('/rest/v1/app_settings', {
+    method:'POST',
+    headers:authHeaders({'Prefer':'resolution=merge-duplicates'}),
+    body:JSON.stringify({ key:'btn_mode', value:mode })
+  });
+}
 document.getElementById('close-admin').addEventListener('click', ()=>document.getElementById('admin-panel').classList.add('hidden'));
 document.getElementById('btn-kpi').addEventListener('click', openKPI);
 
@@ -1848,7 +2012,7 @@ document.getElementById('btn-kpi').addEventListener('click', openKPI);
 function getSorted() {
   const s=[...SPOTS];
   if (currentSort==='alpha') return s.sort((a,b)=>a.name.localeCompare(b.name));
-  if (currentSort==='saved') return s.filter(x=>wishlist.has(x.id));
+  if (currentSort==='saved') return savedOrder.map(id=>SPOTS.find(s=>s.id===id)).filter(Boolean);
   return s.sort((a,b)=>b.rating-a.rating);
 }
 
@@ -1921,26 +2085,27 @@ function renderList() {
     el.querySelectorAll('.move-btn').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
-        const spotIds = sorted.map(x=>x.id);
-        const idx = spotIds.indexOf(btn.dataset.sid);
+        const idx = savedOrder.indexOf(btn.dataset.sid);
         if (btn.dataset.dir==='up' && idx > 0) {
-          [spotIds[idx-1], spotIds[idx]] = [spotIds[idx], spotIds[idx-1]];
-        } else if (btn.dataset.dir==='down' && idx < spotIds.length-1) {
-          [spotIds[idx], spotIds[idx+1]] = [spotIds[idx+1], spotIds[idx]];
+          [savedOrder[idx-1], savedOrder[idx]] = [savedOrder[idx], savedOrder[idx-1]];
+        } else if (btn.dataset.dir==='down' && idx < savedOrder.length-1) {
+          [savedOrder[idx], savedOrder[idx+1]] = [savedOrder[idx+1], savedOrder[idx]];
         }
-        // Rebuild wishlist in new order preserving only saved ids
-        const allWish = [...wishlist];
-        const reordered = spotIds.filter(id=>wishlist.has(id));
-        const rest = allWish.filter(id=>!spotIds.includes(id));
-        wishlist = new Set([...reordered, ...rest]);
         renderList();
       });
     });
     el.querySelector('.wish-btn').addEventListener('click', async e=>{
       e.stopPropagation();
       if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
-      if (wishlist.has(s.id)) { wishlist.delete(s.id); await authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' }); }
-      else { wishlist.add(s.id); await authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) }); }
+      if (wishlist.has(s.id)) {
+        wishlist.delete(s.id);
+        savedOrder = savedOrder.filter(x=>x!==s.id);
+        await authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' });
+      } else {
+        wishlist.add(s.id);
+        savedOrder.push(s.id);
+        await authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) });
+      }
       refreshMarkers(); updateSubText(); renderList();
       if (selectedId===s.id) await showPopup(s);
     });
@@ -2083,6 +2248,7 @@ function updateGolfMarkers() {
 map.on('zoomend', updateGolfMarkers);
 
 // ── BOOT ─────────────────────────────────────────────────────────
+loadBtnMode();
 restoreSession().then(()=>{
   loadSpots().then(async ()=>{
     setTimeout(()=>{ map.invalidateSize(); positionToggle(); }, 400);
