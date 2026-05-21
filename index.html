@@ -73,18 +73,18 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 
 /* SIDEBAR TOGGLE */
 #sidebar-toggle {
-  position:fixed; top:50%; left:256px; transform:translateY(-50%);
+  position:fixed; top:50%; transform:translateY(-50%);
   width:28px; height:56px; background:#111; border:2px solid #e800b0;
   border-left:none; border-radius:0 12px 12px 0;
   cursor:pointer; z-index:9999;
   display:flex; align-items:center; justify-content:center;
   box-shadow:4px 0 16px rgba(232,0,176,0.3);
-  transition:left 0.28s cubic-bezier(.4,0,.2,1), background 0.15s;
   -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  transition:background 0.15s;
 }
 #sidebar-toggle:active { background:#e800b0; }
 #sidebar-toggle svg { pointer-events:none; transition:transform 0.28s; }
-#sidebar-toggle.collapsed { left:0px; border-left:2px solid #e800b0; border-radius:12px; }
+#sidebar-toggle.collapsed { border-left:2px solid #e800b0; border-radius:12px; }
 #sidebar-toggle.collapsed svg { transform:rotate(180deg); }
 
 /* CITY LABEL */
@@ -1031,21 +1031,49 @@ document.querySelectorAll('.sort-btn').forEach(btn=>btn.addEventListener('click'
 }));
 
 // ── SIDEBAR TOGGLE ───────────────────────────────────────────────
+// ── SIDEBAR TOGGLE ───────────────────────────────────────────────
+function positionToggle() {
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('sidebar-toggle');
+  const w = sb.getBoundingClientRect().width;
+  btn.style.left = w + 'px';
+}
+
+// Keep toggle in sync with sidebar animation
+const sidebarEl = document.getElementById('sidebar');
+if (window.ResizeObserver) {
+  new ResizeObserver(positionToggle).observe(sidebarEl);
+} else {
+  positionToggle();
+}
+
 document.getElementById('sidebar-toggle').addEventListener('click', (e)=>{
   e.stopPropagation(); e.preventDefault();
-  sidebarOpen=!sidebarOpen;
-  const sb=document.getElementById('sidebar'), btn=document.getElementById('sidebar-toggle');
-  sb.classList.toggle('collapsed',!sidebarOpen);
-  btn.classList.toggle('collapsed',!sidebarOpen);
-  const sidebarWidth = window.innerWidth <= 600 ? 220 : 256;
-  btn.style.left = sidebarOpen ? sidebarWidth + 'px' : '0px';
-  setTimeout(()=>map.invalidateSize(),300);
+  sidebarOpen = !sidebarOpen;
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('sidebar-toggle');
+  sb.classList.toggle('collapsed', !sidebarOpen);
+  btn.classList.toggle('collapsed', !sidebarOpen);
+  // Animate toggle position alongside sidebar
+  const targetWidth = sidebarOpen ? (window.innerWidth <= 600 ? 220 : 256) : 0;
+  const start = sb.getBoundingClientRect().width;
+  const duration = 280;
+  const startTime = performance.now();
+  function animate(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = progress < 0.5 ? 2*progress*progress : -1+(4-2*progress)*progress;
+    btn.style.left = (start + (targetWidth - start) * ease) + 'px';
+    if (progress < 1) requestAnimationFrame(animate);
+    else { btn.style.left = targetWidth + 'px'; map.invalidateSize(); }
+  }
+  requestAnimationFrame(animate);
 });
 
 // ── BOOT ─────────────────────────────────────────────────────────
 restoreSession().then(()=>{
   loadSpots().then(async ()=>{
-    setTimeout(()=>map.invalidateSize(), 400);
+    setTimeout(()=>{ map.invalidateSize(); positionToggle(); }, 400);
     if (currentUser) await loadUserData();
   });
 });
