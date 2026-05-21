@@ -74,8 +74,8 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 /* SIDEBAR TOGGLE */
 #sidebar-toggle {
   position:fixed; top:50%; transform:translateY(-50%);
-  width:26px; height:52px; background:#111; border:2px solid #e800b0;
-  border-left:none; border-radius:0 10px 10px 0;
+  width:20px; height:48px; background:#111; border:2px solid #e800b0;
+  border-left:none; border-radius:0 8px 8px 0;
   cursor:pointer; z-index:9999;
   display:flex; align-items:center; justify-content:center;
   box-shadow:4px 0 16px rgba(232,0,176,0.3);
@@ -237,12 +237,14 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 
 /* BURGER ROUTE */
 #route-btn {
-  position:fixed; bottom:80px; right:14px; z-index:1000;
-  width:44px; height:44px; background:#111; border:2px solid #e800b0;
-  border-radius:50%; display:flex; align-items:center; justify-content:center;
-  cursor:pointer; box-shadow:0 2px 12px rgba(232,0,176,0.4);
-  font-size:18px; -webkit-tap-highlight-color:transparent;
-  transition:background 0.15s;
+  position:fixed; bottom:200px; right:14px; z-index:1000;
+  width:36px; height:36px; background:#111; border:1px solid #e800b0;
+  border-radius:8px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 2px 8px rgba(232,0,176,0.3);
+  font-size:14px; line-height:1; -webkit-tap-highlight-color:transparent;
+  transition:background 0.15s; color:#e800b0;
+  font-family:'DM Mono',monospace; letter-spacing:0.04em; font-size:9px;
+  text-transform:uppercase;
 }
 #route-btn:active { background:#e800b0; }
 #route-panel {
@@ -293,6 +295,33 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
   letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;
 }
 
+
+/* KPI DASHBOARD */
+#kpi-panel { position:fixed; inset:0; background:#f5f5f5; z-index:4500; display:flex; flex-direction:column; overflow:hidden; }
+#kpi-panel.hidden { display:none; }
+#kpi-header { background:#111; border-bottom:3px solid #e800b0; padding:12px 24px; display:flex; align-items:center; gap:16px; flex-shrink:0; }
+#kpi-header h2 { font-family:'Playfair Display',serif; font-size:18px; color:#fff; flex:1; }
+.close-kpi { background:transparent; border:1px solid #333; color:#aaa; border-radius:4px; padding:6px 12px; font-size:9px; cursor:pointer; font-family:'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; }
+#kpi-body { overflow-y:auto; flex:1; padding:16px; }
+.kpi-section { margin-bottom:20px; }
+.kpi-section-title { font-size:9px; color:#888; letter-spacing:0.14em; text-transform:uppercase; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid #ddd; }
+.kpi-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.kpi-card { background:#fff; border-radius:8px; padding:14px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+.kpi-card.wide { grid-column:1/-1; }
+.kpi-card.highlight { border-left:3px solid #e800b0; }
+.kpi-label { font-size:8px; color:#aaa; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:6px; }
+.kpi-value { font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:#111; line-height:1; }
+.kpi-sub { font-size:9px; color:#888; margin-top:4px; }
+.kpi-trend-up { color:#39ff14; }
+.kpi-trend-down { color:#e800b0; }
+.kpi-list { list-style:none; }
+.kpi-list li { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f0f0f0; font-size:10px; }
+.kpi-list li:last-child { border-bottom:none; }
+.kpi-list .kpi-rank { color:#aaa; width:20px; flex-shrink:0; }
+.kpi-list .kpi-name { flex:1; color:#111; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.kpi-list .kpi-num { color:#e800b0; font-weight:600; flex-shrink:0; }
+#kpi-loading { text-align:center; padding:40px; color:#aaa; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; }
+
 /* LEADERBOARD */
 #leaderboard-panel { position:fixed; inset:0; background:#fff; z-index:4000; display:flex; flex-direction:column; }
 #leaderboard-panel.hidden { display:none; }
@@ -331,7 +360,7 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 #admin-empty { text-align:center; color:#bbb; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; padding:60px 0; }
 
 /* Leaflet */
-.leaflet-bottom.leaflet-right { bottom:24px; right:14px; z-index:450 !important; }
+.leaflet-bottom.leaflet-right { bottom:130px; right:14px; z-index:450 !important; }
 .leaflet-control-zoom { z-index:450 !important; }
 .leaflet-control-zoom a { background:#fff !important; color:#111 !important; border-color:#ddd !important; font-family:'DM Mono',monospace !important; }
 .leaflet-control-attribution { background:transparent !important; font-size:8px !important; color:#aaa !important; border-top:1px solid rgba(255,255,255,0.15) !important; padding:2px 6px !important; }
@@ -476,12 +505,24 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
   </div>
 </div>
 
+<!-- KPI DASHBOARD -->
+<div id="kpi-panel" class="hidden">
+  <div id="kpi-header">
+    <h2>da Burgs Analytics</h2>
+    <button class="close-kpi" id="close-kpi">Close</button>
+  </div>
+  <div id="kpi-body">
+    <div id="kpi-loading">Loading analytics…</div>
+  </div>
+</div>
+
 <!-- BURGER ROUTE BUTTON -->
-<button id="route-btn" title="Plan a burger route">🗺</button>
+<button id="route-btn" title="Plan a burger route">Route</button>
 
 <!-- BURGER ROUTE PANEL -->
 <div id="route-panel">
   <div id="route-title">Burger Route</div>
+  <div id="route-msg" style="display:none;font-size:10px;color:#e800b0;margin-bottom:8px;letter-spacing:0.06em;text-transform:uppercase;"></div>
   <div id="route-stops"><div id="route-empty">Add up to 3 spots to plan your route</div></div>
   <div id="route-actions">
     <button class="route-action-btn" id="route-clear">Clear</button>
@@ -508,6 +549,7 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 <div id="admin-panel" class="hidden">
   <div id="admin-header">
     <h2>Admin · Pending</h2>
+    <button class="hdr-btn" id="btn-kpi" style="background:transparent;border:1px solid #555;color:#aaa;margin-left:8px;">Analytics</button>
     <button class="close-admin" id="close-admin">Close</button>
   </div>
   <div id="admin-list"></div>
@@ -1102,14 +1144,26 @@ function showTreasure(threshold) {
 let routeStops = [], routeLines = [];
 let routePanelOpen = false;
 
+function showRouteMsg(msg) {
+  const el = document.getElementById('route-msg');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(()=>{ el.style.display='none'; }, 2500);
+}
+
 document.getElementById('route-btn').addEventListener('click', ()=>{
   routePanelOpen = !routePanelOpen;
   document.getElementById('route-panel').classList.toggle('visible', routePanelOpen);
+  // Close spot popup when route panel opens
+  if (routePanelOpen) {
+    document.getElementById('popup').classList.remove('visible');
+  }
 });
 
 function addToRoute(spot) {
   if (routeStops.find(s=>s.id===spot.id)) return;
-  if (routeStops.length >= 3) { alert('Max 3 stops per route!'); return; }
+  if (routeStops.length >= 3) { showRouteMsg('Max 3 stops per route'); return; }
   routeStops.push(spot);
   renderRouteStops();
   if (!routePanelOpen) {
@@ -1150,7 +1204,7 @@ document.getElementById('route-clear').addEventListener('click', ()=>{
 });
 
 document.getElementById('route-go').addEventListener('click', ()=>{
-  if (routeStops.length < 2) { alert('Add at least 2 stops!'); return; }
+  if (routeStops.length < 2) { showRouteMsg('Add at least 2 stops first'); return; }
   clearRouteLines();
   const coords = routeStops.map(s=>[s.lat,s.lng]);
   const line = L.polyline(coords, {
@@ -1171,6 +1225,189 @@ document.getElementById('route-go').addEventListener('click', ()=>{
   routePanelOpen = false;
   document.getElementById('route-panel').classList.remove('visible');
 });
+
+
+// ── KPI DASHBOARD ────────────────────────────────────────────────
+async function openKPI() {
+  document.getElementById('kpi-panel').classList.remove('hidden');
+  const body = document.getElementById('kpi-body');
+  body.innerHTML = '<div id="kpi-loading">Loading analytics…</div>';
+
+  // Fetch all data in parallel
+  const [spotsRes, logsRes, savesRes] = await Promise.all([
+    api('/rest/v1/spots?approved=eq.true&select=id,name,rating'),
+    api('/rest/v1/burger_logs?select=id,spot_id,user_id,burger_name,rating,flagged,visited_at,eaten_at'),
+    api('/rest/v1/saves?select=spot_id,user_id')
+  ]);
+
+  if (!logsRes.ok || !savesRes.ok) {
+    body.innerHTML = '<div id="kpi-loading">Could not load analytics.</div>';
+    return;
+  }
+
+  const spots = spotsRes.data || [];
+  const logs  = logsRes.data  || [];
+  const saves = savesRes.data || [];
+
+  // ── Compute KPIs ──────────────────────────────────────────────
+  const totalLogs    = logs.length;
+  const totalSaves   = saves.length;
+  const uniqueVisitors = new Set(logs.map(l=>l.user_id)).size;
+  const uniqueSavers   = new Set(saves.map(s=>s.user_id)).size;
+
+  // This week vs last week
+  const now = new Date();
+  const weekAgo = new Date(now - 7*24*60*60*1000);
+  const twoWeeksAgo = new Date(now - 14*24*60*60*1000);
+  const logsThisWeek = logs.filter(l=>new Date(l.visited_at||l.eaten_at)>=weekAgo).length;
+  const logsLastWeek = logs.filter(l=>{const d=new Date(l.visited_at||l.eaten_at); return d>=twoWeeksAgo&&d<weekAgo;}).length;
+  const savesThisWeek = saves.filter(s=>new Date(s.created_at)>=weekAgo).length;
+  const weekTrend = logsLastWeek > 0 ? Math.round((logsThisWeek-logsLastWeek)/logsLastWeek*100) : 0;
+
+  // Top spots by visits
+  const spotVisits = {};
+  logs.forEach(l=>{ spotVisits[l.spot_id]=(spotVisits[l.spot_id]||0)+1; });
+  const topSpots = Object.entries(spotVisits)
+    .sort((a,b)=>b[1]-a[1]).slice(0,5)
+    .map(([id,count])=>({ name: spots.find(s=>s.id===id)?.name||'Unknown', count }));
+
+  // Top spots by saves
+  const spotSaves = {};
+  saves.forEach(s=>{ spotSaves[s.spot_id]=(spotSaves[s.spot_id]||0)+1; });
+  const topSaved = Object.entries(spotSaves)
+    .sort((a,b)=>b[1]-a[1]).slice(0,5)
+    .map(([id,count])=>({ name: spots.find(s=>s.id===id)?.name||'Unknown', count }));
+
+  // Top burgers overall
+  const burgerCounts = {};
+  logs.forEach(l=>{ burgerCounts[l.burger_name]=(burgerCounts[l.burger_name]||0)+1; });
+  const topBurgers = Object.entries(burgerCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // Day of week pattern
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayCount = [0,0,0,0,0,0,0];
+  logs.forEach(l=>{ const d=new Date(l.visited_at||l.eaten_at); dayCount[d.getDay()]++; });
+  const peakDay = days[dayCount.indexOf(Math.max(...dayCount))];
+
+  // Conversion — saved but not visited
+  const visitedSpotIds = new Set(logs.map(l=>l.spot_id));
+  const savedNotVisited = saves.filter(s=>!visitedSpotIds.has(s.spot_id)).length;
+  const conversionRate = totalSaves > 0 ? Math.round((totalSaves-savedNotVisited)/totalSaves*100) : 0;
+
+  // Flagged burgers
+  const flaggedCount = logs.filter(l=>l.flagged).length;
+
+  // Average rating
+  const rated = logs.filter(l=>l.rating);
+  const avgRating = rated.length > 0 ? (rated.reduce((a,b)=>a+b.rating,0)/rated.length).toFixed(1) : 'N/A';
+
+  // Trending spots (this week vs last week per spot)
+  const spotThisWeek = {}, spotLastWeek = {};
+  logs.forEach(l=>{
+    const d = new Date(l.visited_at||l.eaten_at);
+    if (d>=weekAgo) spotThisWeek[l.spot_id]=(spotThisWeek[l.spot_id]||0)+1;
+    else if (d>=twoWeeksAgo) spotLastWeek[l.spot_id]=(spotLastWeek[l.spot_id]||0)+1;
+  });
+  const trending = Object.entries(spotThisWeek)
+    .map(([id,tw])=>({ name:spots.find(s=>s.id===id)?.name||'Unknown', tw, lw:spotLastWeek[id]||0 }))
+    .filter(s=>s.tw>0)
+    .sort((a,b)=>(b.tw-b.lw)-(a.tw-a.lw))
+    .slice(0,3);
+
+  // ── Render ────────────────────────────────────────────────────
+  body.innerHTML = `
+    <div class="kpi-section">
+      <div class="kpi-section-title">Overview</div>
+      <div class="kpi-grid">
+        <div class="kpi-card highlight">
+          <div class="kpi-label">Total Burgers Logged</div>
+          <div class="kpi-value">${totalLogs}</div>
+          <div class="kpi-sub ${weekTrend>=0?'kpi-trend-up':'kpi-trend-down'}">${weekTrend>=0?'↑':'↓'} ${Math.abs(weekTrend)}% vs last week</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Want to Go Saves</div>
+          <div class="kpi-value">${totalSaves}</div>
+          <div class="kpi-sub">${savesThisWeek} this week</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Unique Burgheads</div>
+          <div class="kpi-value">${uniqueVisitors}</div>
+          <div class="kpi-sub">${uniqueSavers} have saved spots</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg BH Rating</div>
+          <div class="kpi-value">${avgRating}</div>
+          <div class="kpi-sub">out of 5 stars</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Save → Visit Rate</div>
+          <div class="kpi-value">${conversionRate}%</div>
+          <div class="kpi-sub">${savedNotVisited} saves not yet visited</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Peak Day</div>
+          <div class="kpi-value">${peakDay}</div>
+          <div class="kpi-sub">most burgers logged</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-section">
+      <div class="kpi-section-title">Top Spots by Visits</div>
+      <div class="kpi-card wide">
+        <ul class="kpi-list">
+          ${topSpots.map((s,i)=>`<li><span class="kpi-rank">${i+1}</span><span class="kpi-name">${s.name}</span><span class="kpi-num">${s.count} logs</span></li>`).join('')}
+        </ul>
+      </div>
+    </div>
+
+    <div class="kpi-section">
+      <div class="kpi-section-title">Top Spots by Saves (Intent)</div>
+      <div class="kpi-card wide">
+        <ul class="kpi-list">
+          ${topSaved.map((s,i)=>`<li><span class="kpi-rank">${i+1}</span><span class="kpi-name">${s.name}</span><span class="kpi-num">${s.count} saves</span></li>`).join('')}
+        </ul>
+      </div>
+    </div>
+
+    <div class="kpi-section">
+      <div class="kpi-section-title">Trending This Week</div>
+      <div class="kpi-card wide">
+        ${trending.length ? `<ul class="kpi-list">
+          ${trending.map(s=>`<li><span class="kpi-name">${s.name}</span><span class="kpi-num kpi-trend-up">↑ ${s.tw} logs</span></li>`).join('')}
+        </ul>` : '<div style="font-size:10px;color:#aaa;padding:8px 0">Not enough data yet</div>'}
+      </div>
+    </div>
+
+    <div class="kpi-section">
+      <div class="kpi-section-title">Most Logged Burgers</div>
+      <div class="kpi-card wide">
+        <ul class="kpi-list">
+          ${topBurgers.map(([name,count],i)=>`<li><span class="kpi-rank">${i+1}</span><span class="kpi-name">${name}</span><span class="kpi-num">${count}x</span></li>`).join('')}
+        </ul>
+      </div>
+    </div>
+
+    <div class="kpi-section">
+      <div class="kpi-section-title">Data Quality</div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Flagged Burgers</div>
+          <div class="kpi-value">${flaggedCount}</div>
+          <div class="kpi-sub">potential fakes</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Spots</div>
+          <div class="kpi-value">${spots.length}</div>
+          <div class="kpi-sub">approved on map</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+document.getElementById('close-kpi').addEventListener('click', ()=>
+  document.getElementById('kpi-panel').classList.add('hidden'));
 
 // ── LEADERBOARD ──────────────────────────────────────────────────
 async function openLeaderboard() {
@@ -1233,6 +1470,7 @@ async function openAdmin() {
   });
 }
 document.getElementById('close-admin').addEventListener('click', ()=>document.getElementById('admin-panel').classList.add('hidden'));
+document.getElementById('btn-kpi').addEventListener('click', openKPI);
 
 // ── LIST ─────────────────────────────────────────────────────────
 function getSorted() {
