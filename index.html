@@ -1325,14 +1325,83 @@ function renderRouteStops() {
   }
   el.innerHTML = '';
   routeStops.forEach((s,i) => {
+    if (i > 0) {
+      const connector = document.createElement('div');
+      connector.style.cssText = 'height:12px;display:flex;align-items:center;padding-left:20px;';
+      connector.innerHTML = '<div style="width:2px;height:12px;background:#e800b0;opacity:0.4;"></div>';
+      el.appendChild(connector);
+    }
     const row = document.createElement('div');
     row.className = 'route-stop';
-    row.innerHTML = `<span class="route-stop-num">${i+1}</span><span class="route-stop-name">${s.name}</span><button class="route-stop-remove" data-id="${s.id}">✕</button>`;
-    row.querySelector('.route-stop-remove').addEventListener('click', ()=>{
+    row.draggable = true;
+    row.dataset.idx = i;
+    row.style.cursor = 'grab';
+    row.innerHTML = `
+      <span class="route-stop-num">${i+1}</span>
+      <span style="font-size:14px;color:#444;margin-right:6px;cursor:grab;">⠿</span>
+      <span class="route-stop-name">${s.name}</span>
+      <button class="route-stop-remove" data-id="${s.id}">✕</button>`;
+
+    // Remove button
+    row.querySelector('.route-stop-remove').addEventListener('click', (e)=>{
+      e.stopPropagation();
       routeStops = routeStops.filter(x=>x.id!==s.id);
       renderRouteStops();
-      drawRouteLine(); // redraw with remaining stops
+      drawRouteLine();
     });
+
+    // Desktop drag events
+    row.addEventListener('dragstart', (e)=>{
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', i);
+      row.style.opacity = '0.4';
+    });
+    row.addEventListener('dragend', ()=>{ row.style.opacity = '1'; });
+    row.addEventListener('dragover', (e)=>{ e.preventDefault(); row.style.background='#2a2a2a'; });
+    row.addEventListener('dragleave', ()=>{ row.style.background=''; });
+    row.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      row.style.background='';
+      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+      const toIdx   = parseInt(row.dataset.idx);
+      if (fromIdx === toIdx) return;
+      const moved = routeStops.splice(fromIdx, 1)[0];
+      routeStops.splice(toIdx, 0, moved);
+      renderRouteStops();
+      drawRouteLine();
+    });
+
+    // Touch drag events for mobile
+    let touchStartY, touchStartIdx;
+    row.addEventListener('touchstart', (e)=>{
+      touchStartY   = e.touches[0].clientY;
+      touchStartIdx = i;
+      row.style.background = '#2a2a2a';
+    }, { passive:true });
+    row.addEventListener('touchmove', (e)=>{
+      e.preventDefault();
+      const dy = e.touches[0].clientY - touchStartY;
+      row.style.transform = `translateY(${dy}px)`;
+      row.style.zIndex = '9999';
+      row.style.opacity = '0.85';
+    }, { passive:false });
+    row.addEventListener('touchend', (e)=>{
+      row.style.transform = '';
+      row.style.zIndex = '';
+      row.style.opacity = '1';
+      row.style.background = '';
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const itemH = 52; // approx row height
+      const steps = Math.round(dy / itemH);
+      if (steps !== 0) {
+        const newIdx = Math.max(0, Math.min(routeStops.length-1, touchStartIdx + steps));
+        const moved  = routeStops.splice(touchStartIdx, 1)[0];
+        routeStops.splice(newIdx, 0, moved);
+        renderRouteStops();
+        drawRouteLine();
+      }
+    });
+
     el.appendChild(row);
   });
 }
