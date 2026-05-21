@@ -830,7 +830,7 @@ async function loadUserData() {
   }
 
   const { ok:ok1, data:saves } = await authApi('/rest/v1/saves?select=spot_id');
-  if (ok1 && Array.isArray(saves)) { wishlist = new Set(saves.map(r=>r.spot_id)); savedOrder = saves.map(r=>r.spot_id); }
+  if (ok1 && Array.isArray(saves)) { const ids = saves.map(r=>r.spot_id); wishlist = new Set(ids); savedOrder = [...ids]; }
 
   const { ok:ok2, data:logs } = await authApi(`/rest/v1/burger_logs?user_id=eq.${currentUser.id}&select=spot_id,id`);
   if (ok2 && Array.isArray(logs)) {
@@ -1020,8 +1020,9 @@ document.getElementById('popup-wantto').addEventListener('click', async ()=>{
   if (!selectedId) return;
   if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
   const id = selectedId;
+  const wasInWishlist = wishlist.has(id);
   // Update UI instantly
-  if (wishlist.has(id)) {
+  if (wasInWishlist) {
     wishlist.delete(id);
     savedOrder = savedOrder.filter(x=>x!==id);
   } else {
@@ -1031,7 +1032,7 @@ document.getElementById('popup-wantto').addEventListener('click', async ()=>{
   refreshMarkers(); updateSubText();
   await showPopup(SPOTS.find(s=>s.id===id)); renderList();
   // Sync in background
-  if (!wishlist.has(id)) {
+  if (wasInWishlist) {
     authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${id}`, { method:'DELETE' });
   } else {
     authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:id }) });
@@ -2102,20 +2103,26 @@ function renderList() {
     el.querySelector('.wish-btn').addEventListener('click', async e=>{
       e.stopPropagation();
       if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
-      if (wishlist.has(s.id)) {
+      const wasInList = wishlist.has(s.id);
+      // Update UI instantly
+      if (wasInList) {
         wishlist.delete(s.id);
         savedOrder = savedOrder.filter(x=>x!==s.id);
-        await authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' });
       } else {
         wishlist.add(s.id);
         savedOrder.push(s.id);
-        await authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) });
       }
       refreshMarkers(); updateSubText(); renderList();
-      if (selectedId===s.id) await showPopup(s);
+      if (selectedId===s.id) showPopup(s);
+      // Sync to Supabase in background — no await
+      if (wasInList) {
+        authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' });
+      } else {
+        authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) });
+      }
     });
     // Touch drag for saved tab reordering
-    if (currentSort === 'saved') {
+    if (false) { // drag disabled
       let dragStartY, dragEl, dragIdx;
       el.addEventListener('touchstart', (e)=>{
         if (e.target.classList.contains('wish-btn')) return;
