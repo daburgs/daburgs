@@ -610,7 +610,7 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
 <button id="route-btn" title="Plan a burger route">🗺</button>
 
 <!-- BURGER ROUTE PANEL -->
-<div id="route-panel">
+<div id="route-panel" style="transform:translateY(100%)">
   <div id="route-title">Burger Route</div>
   <div id="route-msg" style="display:none;font-size:10px;color:#e800b0;margin-bottom:8px;letter-spacing:0.06em;text-transform:uppercase;"></div>
   <div id="route-stops"><div id="route-empty">Add up to 3 spots to plan your route</div></div>
@@ -911,10 +911,19 @@ document.getElementById('popup-log-btn').addEventListener('click', ()=>{
 });
 document.getElementById('popup-route-btn').addEventListener('click', ()=>{
   const s = SPOTS.find(x=>x.id===selectedId);
-  if (s) {
-    addToRoute(s);
-    document.getElementById('popup').classList.remove('visible');
+  if (!s) return;
+  if (routeStops.find(r=>r.id===s.id)) {
+    showRouteMsg('Already in route');
+    return;
   }
+  if (routeStops.length >= 3) { showRouteMsg('Max 3 stops per route'); return; }
+  routeStops.push(s);
+  renderRouteStops();
+  drawRouteLine();
+  document.getElementById('popup').classList.remove('visible');
+  // Open route panel
+  routePanelOpen = true;
+  document.getElementById('route-panel').classList.add('visible');
 });
 
 document.getElementById('log-close').addEventListener('click', ()=>
