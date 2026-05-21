@@ -1020,17 +1020,22 @@ document.getElementById('popup-wantto').addEventListener('click', async ()=>{
   if (!selectedId) return;
   if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
   const id = selectedId;
+  // Update UI instantly
   if (wishlist.has(id)) {
     wishlist.delete(id);
     savedOrder = savedOrder.filter(x=>x!==id);
-    await authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${id}`, { method:'DELETE' });
   } else {
     wishlist.add(id);
     savedOrder.push(id);
-    await authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:id }) });
   }
   refreshMarkers(); updateSubText();
   await showPopup(SPOTS.find(s=>s.id===id)); renderList();
+  // Sync in background
+  if (!wishlist.has(id)) {
+    authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${id}`, { method:'DELETE' });
+  } else {
+    authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:id }) });
+  }
 });
 
 // ── AUTH ─────────────────────────────────────────────────────────
@@ -2111,7 +2116,7 @@ function renderList() {
     });
     // Touch drag for saved tab reordering
     if (currentSort === 'saved') {
-      let dragStartY, dragEl, dragIdx, savedOrder;
+      let dragStartY, dragEl, dragIdx;
       el.addEventListener('touchstart', (e)=>{
         if (e.target.classList.contains('wish-btn')) return;
         dragStartY = e.touches[0].clientY;
