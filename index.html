@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>da Burgs</title>
+<meta name="application-name" content="da Burgs"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="da Burgs"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#111111"/>
+<meta name="description" content="The best burger spots in Dallas, curated by the community."/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
+<link rel="icon" href="/icon-192.png"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-family:'DM Mono',monospace; }
+#app { display:flex; flex-direction:column; height:100vh; }
+
+/* HEADER */
+#header { display:flex; align-items:center; background:#111; flex-shrink:0; border-bottom:3px solid #e800b0; overflow:hidden; }
+#header-title { padding:10px 16px; border-right:1px solid #2a2a2a; flex-shrink:0; }
+#header h1 { font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:#fff; line-height:1; }
+#header .sub { font-size:9px; color:#555; margin-top:3px; letter-spacing:0.12em; text-transform:uppercase; }
+.legend { display:flex; gap:14px; font-size:9px; color:#666; align-items:center; padding:0 14px; letter-spacing:0.1em; text-transform:uppercase; flex:1; overflow:hidden; }
+.legend-item { display:flex; align-items:center; gap:5px; white-space:nowrap; }
+.dot { display:inline-block; border-radius:50%; flex-shrink:0; }
+#header-actions { margin-left:auto; padding:0 12px; display:flex; gap:6px; align-items:center; flex-shrink:0; }
+#burger-count {
+  font-size:9px; color:#39ff14; letter-spacing:0.1em; text-transform:uppercase;
+  border:1px solid #39ff14; border-radius:4px; padding:5px 8px; white-space:nowrap;
+  display:none;
+}
+.hdr-btn {
+  background:transparent; border:1px solid #333; color:#aaa;
+  border-radius:4px; padding:6px 10px; font-size:9px; cursor:pointer;
+  font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase;
+  transition:all 0.15s; white-space:nowrap; flex-shrink:0;
+}
+.hdr-btn:hover { border-color:#e800b0; color:#e800b0; }
+.hdr-btn.primary { border-color:#e800b0; color:#e800b0; }
+#user-email { font-size:9px; color:#555; letter-spacing:0.06em; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:none; }
+@media (max-width:600px) { .legend { display:none; } }
+
+/* BODY */
+#body { display:flex; flex:1; overflow:hidden; position:relative; }
+
+/* SIDEBAR */
+#sidebar {
+  width:256px; min-width:256px; background:#fff; border-right:1px solid #e0e0e0;
+  display:flex; flex-direction:column;
+  transition:width 0.28s cubic-bezier(.4,0,.2,1), min-width 0.28s cubic-bezier(.4,0,.2,1);
+  overflow:hidden; flex-shrink:0;
+}
+#sidebar.collapsed { width:0; min-width:0; border-right:none; }
+#sidebar-inner { width:256px; min-width:256px; display:flex; flex-direction:column; overflow:hidden; flex:1; }
+
+/* SIDEBAR TOGGLE */
+#sidebar-toggle {
+  position:fixed; top:50%; left:256px; transform:translateY(-50%) translateX(-50%);
+  width:24px; height:48px; background:#111; border:2px solid #444;
+  border-radius:12px; cursor:pointer; z-index:9999;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 12px rgba(0,0,0,0.5);
+  transition:left 0.28s cubic-bezier(.4,0,.2,1), background 0.15s;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+}
+#sidebar-toggle:active { background:#e800b0; }
+#sidebar-toggle svg { pointer-events:none; transition:transform 0.28s; }
+#sidebar-toggle.collapsed { left:0; }
+#sidebar-toggle.collapsed svg { transform:rotate(180deg); }
+
+/* CITY LABEL */
+#city-label { padding:14px 16px 12px; border-bottom:1px solid #e0e0e0; flex-shrink:0; }
+#city-name { font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:#111; line-height:1; }
+#city-sub { font-size:9px; color:#aaa; margin-top:4px; letter-spacing:0.14em; text-transform:uppercase; }
+
+/* SORT BAR */
+#sort-bar { display:flex; gap:0; flex-shrink:0; border-bottom:1px solid #e0e0e0; }
+.sort-btn {
+  flex:1; background:#fff; border:none; border-right:1px solid #e0e0e0;
+  color:#999; padding:9px 4px; font-size:9px; cursor:pointer;
+  font-family:'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; transition:all 0.15s;
+}
+.sort-btn:last-child { border-right:none; }
+.sort-btn.active { background:#111; color:#fff; }
+.sort-btn:hover:not(.active) { background:#f5f5f5; color:#111; }
+
+/* SPOT LIST */
+#spot-list { overflow-y:auto; flex:1; }
+.spot-item {
+  display:flex; align-items:center; gap:8px;
+  padding:11px 14px; border-bottom:1px solid #f0f0f0;
+  cursor:pointer; border-left:3px solid transparent; transition:background 0.12s;
+}
+.spot-item:hover { background:#fafafa; }
+.spot-item.selected { background:#fafafa; border-left-color:#e800b0; }
+.spot-info { flex:1; min-width:0; }
+.spot-name { font-size:11px; font-weight:500; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0.02em; }
+.spot-item.selected .spot-name { color:#e800b0; }
+.spot-meta { font-size:9px; color:#aaa; margin-top:3px; letter-spacing:0.06em; }
+.spot-reason { font-size:9px; color:#999; margin-top:4px; font-style:italic; line-height:1.5; display:none; font-family:Georgia,serif; }
+#sidebar:not(.collapsed) .spot-reason.show { display:block; }
+.wish-btn {
+  background:none; border:1px solid #ddd; border-radius:4px; padding:3px 7px;
+  font-size:13px; cursor:pointer; flex-shrink:0; transition:all 0.15s;
+}
+.wish-btn.active { border-color:#f97316; background:#fff7ed; }
+
+/* MAP */
+#map-wrap { flex:1; position:relative; overflow:hidden; }
+#map { width:100%; height:100%; }
+
+/* POPUP */
+#popup {
+  position:fixed; bottom:0; left:0; right:0;
+  background:#111; border-top:3px solid #e800b0;
+  padding:16px 20px 20px; z-index:2000;
+  display:none; flex-direction:column; gap:0;
+  transform:translateY(100%); transition:transform 0.25s cubic-bezier(.4,0,.2,1);
+}
+#popup.visible { display:flex; transform:translateY(0); }
+#popup-top { display:flex; align-items:flex-start; gap:16px; }
+#popup-info { flex:1; min-width:0; }
+#popup-name { font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:#fff; line-height:1.1; }
+#popup-addr { font-size:10px; color:#666; margin-top:5px; letter-spacing:0.08em; text-transform:uppercase; }
+#popup-rating { font-size:10px; color:#888; margin-top:4px; }
+#popup-reason { font-size:12px; color:#f97316; margin-top:8px; font-style:italic; line-height:1.6; font-family:Georgia,serif; }
+#popup-actions { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+#popup-wish {
+  background:transparent; border:1px solid #444; color:#ccc;
+  border-radius:4px; padding:7px 14px; font-size:11px; cursor:pointer;
+  font-family:'DM Mono',monospace; white-space:nowrap; letter-spacing:0.06em; transition:all 0.15s;
+}
+#popup-wish:hover { border-color:#f97316; color:#f97316; }
+#popup-wish.active { border-color:#f97316; color:#f97316; background:rgba(249,115,22,0.08); }
+#popup-log-btn {
+  background:#e800b0; border:none; color:#fff;
+  border-radius:4px; padding:7px 14px; font-size:11px; cursor:pointer;
+  font-family:'DM Mono',monospace; white-space:nowrap; letter-spacing:0.06em;
+  transition:all 0.15s; display:none;
+}
+#popup-log-btn:hover { background:#c700a0; }
+#popup-close {
+  background:transparent; border:1px solid #333; color:#555;
+  border-radius:4px; padding:7px 14px; font-size:11px; cursor:pointer;
+  font-family:'DM Mono',monospace; letter-spacing:0.06em; transition:all 0.15s;
+}
+#popup-close:hover { border-color:#666; color:#999; }
+
+/* POPUP MENU — community burger list */
+#popup-menu {
+  margin-top:14px; border-top:1px solid #222; padding-top:12px;
+  display:none;
+}
+#popup-menu-title {
+  font-size:9px; color:#555; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px;
+}
+#popup-menu-list { display:flex; flex-wrap:wrap; gap:6px; }
+.menu-item {
+  background:#1a1a1a; border:1px solid #2a2a2a; color:#ccc;
+  border-radius:4px; padding:4px 10px; font-size:10px; cursor:pointer;
+  font-family:'DM Mono',monospace; transition:all 0.15s; letter-spacing:0.04em;
+}
+.menu-item:hover { border-color:#e800b0; color:#e800b0; }
+.menu-item.my-log { border-color:#39ff14; color:#39ff14; }
+
+/* MODAL OVERLAY */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  z-index:3000; display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.modal-overlay.hidden { display:none; }
+.modal {
+  background:#fff; border-top:3px solid #e800b0;
+  width:100%; max-width:420px; border-radius:0 0 4px 4px;
+  padding:28px; position:relative; max-height:90vh; overflow-y:auto;
+}
+.modal h2 { font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:#111; margin-bottom:4px; }
+.modal-sub { font-size:9px; color:#aaa; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:24px; }
+.modal-close { position:absolute; top:14px; right:16px; background:none; border:none; font-size:18px; color:#aaa; cursor:pointer; }
+.field { margin-bottom:16px; }
+.field label { display:block; font-size:9px; color:#888; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; }
+.field input, .field textarea, .field select {
+  width:100%; border:1px solid #ddd; border-radius:3px;
+  padding:9px 11px; font-size:12px; font-family:'DM Mono',monospace;
+  color:#111; outline:none; transition:border 0.15s; background:#fafafa;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color:#e800b0; background:#fff; }
+.field textarea { resize:vertical; min-height:60px; }
+.modal-row { display:flex; gap:10px; }
+.modal-row .field { flex:1; }
+.modal-err { font-size:10px; color:#e800b0; margin-bottom:12px; min-height:16px; letter-spacing:0.04em; }
+.modal-btn {
+  width:100%; background:#111; color:#fff; border:none;
+  padding:11px; font-size:11px; font-family:'DM Mono',monospace;
+  letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; border-radius:3px; transition:background 0.15s;
+}
+.modal-btn:hover { background:#222; }
+.modal-btn:disabled { background:#ccc; cursor:not-allowed; }
+.modal-link { font-size:10px; color:#aaa; text-align:center; margin-top:14px; letter-spacing:0.04em; }
+.modal-link a { color:#e800b0; cursor:pointer; text-decoration:none; }
+
+/* STAR RATING */
+.star-row { display:flex; gap:6px; margin-top:4px; }
+.star {
+  font-size:22px; cursor:pointer; color:#ddd; transition:color 0.1s; line-height:1;
+  -webkit-tap-highlight-color:transparent;
+}
+.star.on { color:#f97316; }
+
+/* ADMIN PANEL */
+#admin-panel { position:fixed; inset:0; background:#fff; z-index:4000; display:flex; flex-direction:column; }
+#admin-panel.hidden { display:none; }
+#admin-header { background:#111; border-bottom:3px solid #e800b0; padding:12px 24px; display:flex; align-items:center; gap:16px; flex-shrink:0; }
+#admin-header h2 { font-family:'Playfair Display',serif; font-size:18px; color:#fff; }
+#admin-header .close-admin { margin-left:auto; background:transparent; border:1px solid #333; color:#aaa; border-radius:4px; padding:6px 12px; font-size:9px; cursor:pointer; font-family:'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; }
+#admin-list { overflow-y:auto; flex:1; padding:20px 24px; }
+.admin-item { border:1px solid #eee; border-radius:4px; padding:16px; margin-bottom:12px; display:flex; align-items:flex-start; gap:16px; }
+.admin-info { flex:1; min-width:0; }
+.admin-name { font-size:13px; font-weight:500; color:#111; }
+.admin-addr { font-size:10px; color:#888; margin-top:3px; }
+.admin-reason { font-size:10px; color:#aaa; margin-top:4px; font-style:italic; }
+.admin-actions { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+.approve-btn { background:#111; color:#fff; border:none; border-radius:3px; padding:7px 14px; font-size:9px; cursor:pointer; font-family:'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; }
+.reject-btn { background:#fff; color:#aaa; border:1px solid #ddd; border-radius:3px; padding:7px 14px; font-size:9px; cursor:pointer; font-family:'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; }
+.approve-btn:hover { background:#e800b0; }
+.reject-btn:hover { border-color:#e800b0; color:#e800b0; }
+#admin-empty { text-align:center; color:#bbb; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; padding:60px 0; }
+
+/* Leaflet */
+.leaflet-bottom.leaflet-right { bottom:24px; right:14px; z-index:450 !important; }
+.leaflet-control-zoom { z-index:450 !important; }
+.leaflet-control-zoom a { background:#fff !important; color:#111 !important; border-color:#ddd !important; font-family:'DM Mono',monospace !important; }
+.leaflet-control-attribution { background:transparent !important; font-size:8px !important; color:#aaa !important; border-top:1px solid rgba(255,255,255,0.15) !important; padding:2px 6px !important; }
+.leaflet-control-attribution a { color:#bbb !important; text-decoration:none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="header">
+    <div id="header-title">
+      <h1>da Burgs</h1>
+      <div class="sub" id="sub-text">loading…</div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><span class="dot" style="width:9px;height:9px;background:#e800b0;box-shadow:0 0 5px #e800b0aa"></span>spot</div>
+      <div class="legend-item"><span class="dot" style="width:9px;height:9px;background:#f97316;box-shadow:0 0 5px #f97316aa"></span>want to go</div>
+      <div class="legend-item"><span style="font-size:11px;line-height:1">🍔</span>been here</div>
+    </div>
+    <div id="header-actions">
+      <div id="burger-count">🍔 0</div>
+      <button class="hdr-btn" id="btn-submit" style="display:none">+ Submit</button>
+      <button class="hdr-btn primary" id="btn-auth">Sign In</button>
+    </div>
+  </div>
+
+  <div id="body">
+    <div id="sidebar">
+      <div id="sidebar-inner">
+        <div id="city-label">
+          <div id="city-name">Dallas</div>
+          <div id="city-sub">Texas, USA</div>
+        </div>
+        <div id="sort-bar">
+          <button class="sort-btn active" data-sort="top">Top</button>
+          <button class="sort-btn" data-sort="alpha">A–Z</button>
+          <button class="sort-btn" data-sort="saved">Saved</button>
+        </div>
+        <div id="spot-list"></div>
+      </div>
+    </div>
+    <div id="map-wrap"><div id="map"></div></div>
+  </div>
+
+  <button id="sidebar-toggle" title="Toggle sidebar">
+    <svg width="10" height="14" viewBox="0 0 10 14" xmlns="http://www.w3.org/2000/svg">
+      <polyline points="7,1 2,7 7,13" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+
+  <!-- SPOT POPUP -->
+  <div id="popup">
+    <div id="popup-top">
+      <div id="popup-info">
+        <div id="popup-name"></div>
+        <div id="popup-addr"></div>
+        <div id="popup-rating"></div>
+        <div id="popup-reason"></div>
+      </div>
+      <div id="popup-actions">
+        <button id="popup-log-btn">Log a Burger</button>
+        <button id="popup-wish">Save</button>
+        <button id="popup-close">Close</button>
+      </div>
+    </div>
+    <div id="popup-menu">
+      <div id="popup-menu-title">Burgers at this spot</div>
+      <div id="popup-menu-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay hidden" id="auth-modal">
+  <div class="modal">
+    <button class="modal-close" id="auth-close">✕</button>
+    <h2 id="auth-title">Sign In</h2>
+    <div class="modal-sub" id="auth-sub">welcome back to da burgs</div>
+    <div class="field" id="display-name-field" style="display:none">
+      <label>Display Name</label>
+      <input type="text" id="auth-display-name" placeholder="how the world knows you"/>
+    </div>
+    <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="you@example.com"/></div>
+    <div class="field"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••"/></div>
+    <div class="modal-err" id="auth-err"></div>
+    <button class="modal-btn" id="auth-submit">Sign In</button>
+    <div class="modal-link" id="auth-toggle-wrap">No account? <a id="auth-toggle">Create one</a></div>
+    <div class="modal-link" id="auth-confirm-msg" style="display:none;color:#111">Check your email to confirm your account, then sign in.</div>
+  </div>
+</div>
+
+<!-- LOG A BURGER MODAL -->
+<div class="modal-overlay hidden" id="log-modal">
+  <div class="modal">
+    <button class="modal-close" id="log-close">✕</button>
+    <h2 id="log-modal-title">Log a Burger</h2>
+    <div class="modal-sub" id="log-modal-sub"></div>
+    <div class="field">
+      <label>Burger Name</label>
+      <input type="text" id="log-burger-name" placeholder="e.g. The Classic, Bacon Jam Burger"/>
+      <div id="log-suggestions" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;"></div>
+    </div>
+    <div class="field">
+      <label>Your Rating</label>
+      <div class="star-row" id="log-stars">
+        <span class="star" data-val="1">★</span>
+        <span class="star" data-val="2">★</span>
+        <span class="star" data-val="3">★</span>
+        <span class="star" data-val="4">★</span>
+        <span class="star" data-val="5">★</span>
+      </div>
+    </div>
+    <div class="field"><label>Note (optional)</label><textarea id="log-note" placeholder="e.g. get extra sauce, ask for medium rare"></textarea></div>
+    <div class="field">
+      <label>Date Eaten</label>
+      <input type="date" id="log-date"/>
+    </div>
+    <div class="modal-err" id="log-err"></div>
+    <button class="modal-btn" id="log-submit">Log It</button>
+  </div>
+</div>
+
+<!-- SUBMIT A SPOT MODAL -->
+<div class="modal-overlay hidden" id="submit-modal">
+  <div class="modal">
+    <button class="modal-close" id="submit-close">✕</button>
+    <h2>Submit a Spot</h2>
+    <div class="modal-sub">know a great burger spot? put it on the map</div>
+    <div class="field"><label>Name</label><input type="text" id="sub-name" placeholder="e.g. Rodeo Goat"/></div>
+    <div class="field"><label>Address</label><input type="text" id="sub-address" placeholder="e.g. 1926 Market Center Blvd, Dallas"/></div>
+    <div class="modal-row">
+      <div class="field"><label>Latitude</label><input type="number" id="sub-lat" placeholder="32.7972" step="0.0001"/></div>
+      <div class="field"><label>Longitude</label><input type="number" id="sub-lng" placeholder="-96.8239" step="0.0001"/></div>
+    </div>
+    <div class="field"><label>Why is it worth it?</label><textarea id="sub-reason" placeholder="What makes it special?"></textarea></div>
+    <div class="modal-err" id="sub-err"></div>
+    <button class="modal-btn" id="sub-submit">Submit for Review</button>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-panel" class="hidden">
+  <div id="admin-header">
+    <h2>Admin · Pending</h2>
+    <button class="close-admin" id="close-admin">Close</button>
+  </div>
+  <div id="admin-list"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hjnebfqcpzuvsevnzfqp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_spK3ko4g-dSt29I8XncR_Q_NtIR6aCm';
+const ADMIN_EMAIL  = 'kluck.stephen@newclear.cc';
+
+let SPOTS = [], wishlist = new Set(), visitedSpots = new Set();
+let selectedId = null, currentSort = 'top', sidebarOpen = true, markers = {};
+let currentUser = null, userToken = null, userProfile = null;
+let myBurgerCount = 0, logRating = 0;
+
+// ── API ──────────────────────────────────────────────────────────
+function headers(extra={}) {
+  const h = {
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_KEY,
+    ...extra
+  };
+  return h;
+}
+
+function authHeaders(extra={}) {
+  const h = {
+    'Authorization': `Bearer ${userToken || SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_KEY,
+    ...extra
+  };
+  return h;
+}
+
+async function api(path, opts={}) {
+  const res = await fetch(SUPABASE_URL+path, { headers:headers(), ...opts });
+  const text = await res.text();
+  try { return { ok:res.ok, data:JSON.parse(text) }; }
+  catch { return { ok:res.ok, data:text }; }
+}
+
+async function authApi(path, opts={}) {
+  const res = await fetch(SUPABASE_URL+path, { headers:authHeaders(), ...opts });
+  const text = await res.text();
+  try { return { ok:res.ok, data:JSON.parse(text) }; }
+  catch { return { ok:res.ok, data:text }; }
+}
+
+// ── MAP ──────────────────────────────────────────────────────────
+const map = L.map('map', { center:[32.845,-96.77], zoom:11, zoomControl:false });
+L.control.zoom({ position:'bottomright' }).addTo(map);
+L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.png?api_key=6c8226b5-060a-440a-a41a-b9d23a29bd99', {
+  attribution:'&copy; <a href="https://stamen.com">Stamen</a> &copy; <a href="https://stadiamaps.com">Stadia</a> &copy; OpenStreetMap',
+  maxZoom:19
+}).addTo(map);
+
+function makeIcon(spotId) {
+  const isVisited = visitedSpots.has(spotId);
+  const isWish    = wishlist.has(spotId);
+  const isSel     = selectedId === spotId;
+
+  if (isVisited) {
+    // Burger emoji marker for visited spots
+    const sz = isSel ? 28 : 22;
+    return L.divIcon({
+      className:'',
+      html:`<div style="font-size:${sz}px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5));cursor:pointer;${isSel?'transform:scale(1.2);':''}">🍔</div>`,
+      iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
+    });
+  }
+
+  const color = isWish ? '#f97316' : '#e800b0';
+  const size  = isSel ? 17 : isWish ? 14 : 12;
+  const ring  = isSel ? `<circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="none" stroke="${color}" stroke-width="2" opacity="0.4"/>` : '';
+  return L.divIcon({
+    className:'',
+    html:`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+      ${ring}
+      <circle cx="${size/2}" cy="${size/2}" r="${isSel?5.5:isWish?5:4.5}" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+    </svg>`,
+    iconSize:[size,size], iconAnchor:[size/2,size/2]
+  });
+}
+
+function refreshMarkers() {
+  SPOTS.forEach(s => markers[s.id] && markers[s.id].setIcon(makeIcon(s.id)));
+}
+
+function updateSubText() {
+  document.getElementById('sub-text').textContent = `${SPOTS.length} spots · ${wishlist.size} saved`;
+}
+
+// ── LOAD SPOTS ───────────────────────────────────────────────────
+async function loadSpots() {
+  document.getElementById('spot-list').innerHTML =
+    '<div style="padding:28px 14px;text-align:center;color:#bbb;font-size:10px;letter-spacing:0.1em;text-transform:uppercase">Loading…</div>';
+  const { ok, data } = await api('/rest/v1/spots?approved=eq.true&order=rating.desc');
+  if (!ok) {
+    document.getElementById('spot-list').innerHTML =
+      '<div style="padding:28px 14px;text-align:center;color:#e800b0;font-size:10px;letter-spacing:0.1em;text-transform:uppercase">Could not load spots.</div>';
+    return;
+  }
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  SPOTS = data.map(s => ({ id:s.id, name:s.name, address:s.address, lat:parseFloat(s.lat), lng:parseFloat(s.lng), rating:parseFloat(s.rating), reason:s.reason||'' }));
+  SPOTS.forEach(s => {
+    markers[s.id] = L.marker([s.lat,s.lng], { icon:makeIcon(s.id) }).addTo(map).on('click', ()=>selectSpot(s.id));
+  });
+  updateSubText(); renderList();
+}
+
+// ── LOAD USER DATA ───────────────────────────────────────────────
+async function loadUserData() {
+  if (!currentUser || !SPOTS.length) return;
+
+  const { ok:ok1, data:saves } = await authApi('/rest/v1/saves?select=spot_id');
+  if (ok1 && Array.isArray(saves)) wishlist = new Set(saves.map(r=>r.spot_id));
+
+  const { ok:ok2, data:logs } = await authApi(`/rest/v1/burger_logs?user_id=eq.${currentUser.id}&select=spot_id,id`);
+  if (ok2 && Array.isArray(logs)) {
+    visitedSpots = new Set(logs.map(l=>l.spot_id));
+    myBurgerCount = logs.length;
+    const bc = document.getElementById('burger-count');
+    bc.textContent = `🍔 ${myBurgerCount}`;
+    bc.style.display = 'block';
+  }
+
+  refreshMarkers(); updateSubText(); renderList();
+}
+
+// ── SELECT SPOT ──────────────────────────────────────────────────
+async function selectSpot(id) {
+  selectedId = id;
+  const s = SPOTS.find(x=>x.id===id);
+  renderList(); refreshMarkers();
+  map.flyTo([s.lat,s.lng], 14, { duration:0.6 });
+  await showPopup(s);
+}
+
+async function showPopup(s) {
+  document.getElementById('popup-name'  ).textContent = s.name;
+  document.getElementById('popup-addr'  ).textContent = s.address;
+  document.getElementById('popup-rating').textContent = '⭐ ' + s.rating;
+  document.getElementById('popup-reason').textContent = s.reason;
+  const wb = document.getElementById('popup-wish');
+  wb.textContent = wishlist.has(s.id) ? 'Saved' : 'Save';
+  wb.className   = wishlist.has(s.id) ? 'active' : '';
+  const lb = document.getElementById('popup-log-btn');
+  lb.style.display = currentUser ? 'block' : 'none';
+  document.getElementById('popup').classList.add('visible');
+
+  // Load community burger menu for this spot
+  await loadSpotMenu(s.id);
+}
+
+async function loadSpotMenu(spotId) {
+  const menuEl = document.getElementById('popup-menu');
+  const listEl = document.getElementById('popup-menu-list');
+  listEl.innerHTML = '<span style="font-size:10px;color:#555">Loading…</span>';
+  menuEl.style.display = 'block';
+
+  const { ok, data } = await api(`/rest/v1/burger_logs?spot_id=eq.${spotId}&select=burger_name,user_id,id&order=created_at.desc`);
+  if (!ok || !data.length) {
+    listEl.innerHTML = '<span style="font-size:10px;color:#555;font-style:italic">No burgers logged yet. Be the first!</span>';
+    return;
+  }
+
+  // Deduplicate by name, count occurrences
+  const counts = {};
+  data.forEach(l => { counts[l.burger_name] = (counts[l.burger_name]||0)+1; });
+
+  listEl.innerHTML = '';
+  Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([name, count]) => {
+    const isMyLog = currentUser && data.some(l=>l.burger_name===name && l.user_id===currentUser.id);
+    const chip = document.createElement('div');
+    chip.className = 'menu-item' + (isMyLog?' my-log':'');
+    chip.textContent = count > 1 ? `${name} (${count})` : name;
+    chip.title = 'Click to log this burger';
+    chip.addEventListener('click', () => {
+      document.getElementById('log-burger-name').value = name;
+      openLogModal(SPOTS.find(s=>s.id===spotId));
+    });
+    listEl.appendChild(chip);
+  });
+}
+
+// ── LOG A BURGER ─────────────────────────────────────────────────
+function openLogModal(spot) {
+  if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
+  document.getElementById('log-modal-title').textContent = 'Log a Burger';
+  document.getElementById('log-modal-sub').textContent   = spot.name.toUpperCase();
+  document.getElementById('log-err').textContent = '';
+  document.getElementById('log-note').value = '';
+  document.getElementById('log-date').value = new Date().toISOString().split('T')[0];
+  logRating = 0;
+  document.querySelectorAll('.star').forEach(s=>s.classList.remove('on'));
+
+  // Load suggestions
+  api(`/rest/v1/burger_logs?spot_id=eq.${spot.id}&select=burger_name`).then(({ok,data})=>{
+    const sugEl = document.getElementById('log-suggestions');
+    sugEl.innerHTML = '';
+    if (ok && data.length) {
+      const names = [...new Set(data.map(l=>l.burger_name))].slice(0,8);
+      names.forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = 'menu-item';
+        chip.textContent = name;
+        chip.addEventListener('click', ()=>{ document.getElementById('log-burger-name').value = name; });
+        sugEl.appendChild(chip);
+      });
+    }
+  });
+
+  document.getElementById('log-modal').classList.remove('hidden');
+  document.getElementById('log-modal').dataset.spotId = spot.id;
+}
+
+document.getElementById('popup-log-btn').addEventListener('click', ()=>{
+  const s = SPOTS.find(x=>x.id===selectedId);
+  if (s) openLogModal(s);
+});
+
+document.getElementById('log-close').addEventListener('click', ()=>
+  document.getElementById('log-modal').classList.add('hidden'));
+
+// Star rating
+document.querySelectorAll('.star').forEach(star=>{
+  star.addEventListener('click', ()=>{
+    logRating = parseInt(star.dataset.val);
+    document.querySelectorAll('.star').forEach(s=>s.classList.toggle('on', parseInt(s.dataset.val)<=logRating));
+  });
+});
+
+document.getElementById('log-submit').addEventListener('click', async ()=>{
+  const spotId     = document.getElementById('log-modal').dataset.spotId;
+  const burgerName = document.getElementById('log-burger-name').value.trim();
+  const note       = document.getElementById('log-note').value.trim();
+  const date       = document.getElementById('log-date').value;
+  const errEl      = document.getElementById('log-err');
+  const btn        = document.getElementById('log-submit');
+
+  if (!burgerName) { errEl.textContent = 'Please enter a burger name.'; return; }
+  btn.disabled = true; btn.textContent = 'Logging…'; errEl.textContent = '';
+
+  const { ok } = await authApi('/rest/v1/burger_logs', {
+    method:'POST',
+    headers: authHeaders({ 'Prefer':'return=minimal' }),
+    body: JSON.stringify({ user_id:currentUser.id, spot_id:spotId, burger_name:burgerName, rating:logRating||null, note:note||null, eaten_at:date })
+  });
+
+  if (ok) {
+    document.getElementById('log-modal').classList.add('hidden');
+    // Update count + visited
+    myBurgerCount++;
+    visitedSpots.add(spotId);
+    const bc = document.getElementById('burger-count');
+    bc.textContent = `🍔 ${myBurgerCount}`;
+    bc.style.display = 'block';
+    refreshMarkers();
+    // Reload menu
+    await loadSpotMenu(spotId);
+  } else {
+    errEl.textContent = 'Could not save. Please try again.';
+  }
+  btn.disabled = false; btn.textContent = 'Log It';
+});
+
+// ── POPUP CLOSE / WISH ───────────────────────────────────────────
+document.getElementById('popup-close').addEventListener('click', ()=>{
+  document.getElementById('popup').classList.remove('visible');
+  selectedId = null; renderList(); refreshMarkers();
+});
+
+document.getElementById('popup-wish').addEventListener('click', async ()=>{
+  if (!selectedId) return;
+  if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
+  const id = selectedId;
+  if (wishlist.has(id)) {
+    wishlist.delete(id);
+    await authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${id}`, { method:'DELETE' });
+  } else {
+    wishlist.add(id);
+    await authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:id }) });
+  }
+  refreshMarkers(); updateSubText();
+  await showPopup(SPOTS.find(s=>s.id===id)); renderList();
+});
+
+// ── AUTH ─────────────────────────────────────────────────────────
+let authMode = 'signin';
+
+async function signIn(email, password) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method:'POST', headers:{ 'Authorization':`Bearer ${SUPABASE_KEY}`, 'apikey':SUPABASE_KEY, 'Content-Type':'application/json' },
+    body:JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description||data.msg||'Sign in failed');
+  return data;
+}
+
+async function signUp(email, password) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+    method:'POST', headers:{ 'Authorization':`Bearer ${SUPABASE_KEY}`, 'apikey':SUPABASE_KEY, 'Content-Type':'application/json' },
+    body:JSON.stringify({ email, password, options:{ emailRedirectTo:'https://daburgs.netlify.app' } })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description||data.msg||'Sign up failed');
+  return data;
+}
+
+async function saveProfile(userId, displayName) {
+  await authApi('/rest/v1/profiles', {
+    method:'POST', headers:authHeaders({'Prefer':'return=minimal'}),
+    body:JSON.stringify({ id:userId, display_name:displayName })
+  });
+}
+
+async function signOut() {
+  if (userToken) await fetch(`${SUPABASE_URL}/auth/v1/logout`, { method:'POST', headers:{ 'apikey':SUPABASE_KEY, 'Authorization':`Bearer ${userToken}` } });
+  currentUser = null; userToken = null; userProfile = null;
+  localStorage.removeItem('db_token'); localStorage.removeItem('db_user');
+  wishlist.clear(); visitedSpots.clear(); myBurgerCount = 0;
+  document.getElementById('burger-count').style.display = 'none';
+  updateAuthUI(); updateSubText(); renderList(); refreshMarkers();
+}
+
+function updateAuthUI() {
+  const authBtn   = document.getElementById('btn-auth');
+  const submitBtn = document.getElementById('btn-submit');
+  if (currentUser) {
+    authBtn.textContent = 'Sign Out';
+    submitBtn.style.display = 'block';
+    if (currentUser.email === ADMIN_EMAIL) {
+      let ab = document.getElementById('btn-admin');
+      if (!ab) {
+        ab = document.createElement('button');
+        ab.id = 'btn-admin'; ab.className = 'hdr-btn';
+        ab.textContent = 'Admin';
+        ab.addEventListener('click', openAdmin);
+        document.getElementById('header-actions').insertBefore(ab, submitBtn);
+      }
+    }
+  } else {
+    authBtn.textContent = 'Sign In';
+    submitBtn.style.display = 'none';
+    const ab = document.getElementById('btn-admin');
+    if (ab) ab.remove();
+  }
+}
+
+async function restoreSession() {
+  const t = localStorage.getItem('db_token');
+  const u = localStorage.getItem('db_user');
+  if (!t || !u) return;
+  try {
+    userToken = t;
+    currentUser = JSON.parse(u);
+    // Validate token is still alive
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${t}` }
+    });
+    if (!res.ok) {
+      // Token expired — try to refresh
+      const stored = localStorage.getItem('db_refresh');
+      if (stored) {
+        const ref = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: stored })
+        });
+        if (ref.ok) {
+          const data = await ref.json();
+          userToken = data.access_token;
+          currentUser = data.user;
+          localStorage.setItem('db_token', userToken);
+          localStorage.setItem('db_user', JSON.stringify(currentUser));
+          if (data.refresh_token) localStorage.setItem('db_refresh', data.refresh_token);
+        } else {
+          // Refresh failed — sign out cleanly
+          userToken = null; currentUser = null;
+          localStorage.removeItem('db_token');
+          localStorage.removeItem('db_user');
+          localStorage.removeItem('db_refresh');
+        }
+      } else {
+        userToken = null; currentUser = null;
+        localStorage.removeItem('db_token');
+        localStorage.removeItem('db_user');
+      }
+    }
+    updateAuthUI();
+  } catch {
+    userToken = null; currentUser = null;
+    localStorage.clear();
+  }
+}
+
+document.getElementById('btn-auth').addEventListener('click', ()=>{
+  if (currentUser) { signOut(); return; }
+  authMode='signin'; resetAuthModal();
+  document.getElementById('auth-modal').classList.remove('hidden');
+});
+document.getElementById('auth-close').addEventListener('click', ()=>document.getElementById('auth-modal').classList.add('hidden'));
+
+function resetAuthModal() {
+  document.getElementById('auth-err').textContent='';
+  document.getElementById('auth-confirm-msg').style.display='none';
+  document.getElementById('auth-toggle-wrap').style.display='block';
+  const dnf = document.getElementById('display-name-field');
+  if (authMode==='signin') {
+    document.getElementById('auth-title').textContent='Sign In';
+    document.getElementById('auth-sub').textContent='welcome back to da burgs';
+    document.getElementById('auth-submit').textContent='Sign In';
+    document.getElementById('auth-toggle-wrap').innerHTML='No account? <a id="auth-toggle">Create one</a>';
+    dnf.style.display='none';
+  } else {
+    document.getElementById('auth-title').textContent='Create Account';
+    document.getElementById('auth-sub').textContent='join da burg community';
+    document.getElementById('auth-submit').textContent='Sign Up';
+    document.getElementById('auth-toggle-wrap').innerHTML='Have an account? <a id="auth-toggle">Sign in</a>';
+    dnf.style.display='block';
+  }
+  document.getElementById('auth-toggle').addEventListener('click', ()=>{ authMode=authMode==='signin'?'signup':'signin'; resetAuthModal(); });
+}
+
+document.getElementById('auth-submit').addEventListener('click', async ()=>{
+  const email    = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const dispName = document.getElementById('auth-display-name').value.trim();
+  const errEl    = document.getElementById('auth-err');
+  const btn      = document.getElementById('auth-submit');
+  if (!email||!password) { errEl.textContent='Please fill in all fields.'; return; }
+  if (authMode==='signup'&&!dispName) { errEl.textContent='Please enter a display name.'; return; }
+  btn.disabled=true; btn.textContent='…'; errEl.textContent='';
+  try {
+    if (authMode==='signup') {
+      const data = await signUp(email, password);
+      // Save display name — will finalize after email confirm + sign in
+      localStorage.setItem('pending_display_name', dispName);
+      document.getElementById('auth-toggle-wrap').style.display='none';
+      document.getElementById('auth-confirm-msg').style.display='block';
+      btn.textContent='Done'; return;
+    } else {
+      const data = await signIn(email, password);
+      userToken=data.access_token; currentUser=data.user;
+      localStorage.setItem('db_token', userToken);
+      localStorage.setItem('db_user', JSON.stringify(currentUser));
+      if (data.refresh_token) localStorage.setItem('db_refresh', data.refresh_token);
+      // Save pending display name if exists
+      const pending = localStorage.getItem('pending_display_name');
+      if (pending) { await saveProfile(currentUser.id, pending); localStorage.removeItem('pending_display_name'); }
+      updateAuthUI();
+      document.getElementById('auth-modal').classList.add('hidden');
+      await loadUserData();
+      if (selectedId) { const s=SPOTS.find(x=>x.id===selectedId); if(s) await showPopup(s); }
+    }
+  } catch(e) { errEl.textContent=e.message; }
+  btn.disabled=false; btn.textContent=authMode==='signin'?'Sign In':'Sign Up';
+});
+
+// ── SUBMIT A SPOT ────────────────────────────────────────────────
+document.getElementById('btn-submit').addEventListener('click', ()=>{
+  document.getElementById('sub-err').textContent='';
+  document.getElementById('submit-modal').classList.remove('hidden');
+});
+document.getElementById('submit-close').addEventListener('click', ()=>document.getElementById('submit-modal').classList.add('hidden'));
+document.getElementById('sub-submit').addEventListener('click', async ()=>{
+  const name=document.getElementById('sub-name').value.trim();
+  const address=document.getElementById('sub-address').value.trim();
+  const lat=parseFloat(document.getElementById('sub-lat').value);
+  const lng=parseFloat(document.getElementById('sub-lng').value);
+  const reason=document.getElementById('sub-reason').value.trim();
+  const errEl=document.getElementById('sub-err');
+  const btn=document.getElementById('sub-submit');
+  if (!name||!address||isNaN(lat)||isNaN(lng)) { errEl.textContent='Name, address, lat and lng required.'; return; }
+  btn.disabled=true; btn.textContent='Submitting…'; errEl.textContent='';
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/spots`, {
+    method:'POST', headers:authHeaders({'Prefer':'return=minimal'}),
+    body:JSON.stringify({ name, address, lat, lng, reason, approved:false, submitted_by:currentUser.id })
+  });
+  if (res.ok) {
+    document.getElementById('submit-modal').classList.add('hidden');
+    ['sub-name','sub-address','sub-lat','sub-lng','sub-reason'].forEach(id=>document.getElementById(id).value='');
+    alert('Submitted! We\'ll review and add it to the map soon.');
+  } else { errEl.textContent='Submission failed.'; }
+  btn.disabled=false; btn.textContent='Submit for Review';
+});
+
+// ── ADMIN ────────────────────────────────────────────────────────
+async function openAdmin() {
+  document.getElementById('admin-panel').classList.remove('hidden');
+  const list=document.getElementById('admin-list');
+  list.innerHTML='<div id="admin-empty">Loading…</div>';
+  const { ok, data } = await authApi('/rest/v1/spots?approved=eq.false&order=created_at.asc');
+  if (!ok||!data.length) { list.innerHTML='<div id="admin-empty">No pending submissions</div>'; return; }
+  list.innerHTML='';
+  data.forEach(s=>{
+    const el=document.createElement('div'); el.className='admin-item';
+    el.innerHTML=`<div class="admin-info"><div class="admin-name">${s.name}</div><div class="admin-addr">${s.address}</div>${s.reason?`<div class="admin-reason">"${s.reason}"</div>`:''}</div><div class="admin-actions"><button class="approve-btn">Approve</button><button class="reject-btn">Reject</button></div>`;
+    el.querySelector('.approve-btn').addEventListener('click', async ()=>{
+      await authApi(`/rest/v1/spots?id=eq.${s.id}`, { method:'PATCH', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ approved:true }) });
+      el.remove(); await loadSpots();
+    });
+    el.querySelector('.reject-btn').addEventListener('click', async ()=>{
+      if (!confirm(`Delete "${s.name}"?`)) return;
+      await authApi(`/rest/v1/spots?id=eq.${s.id}`, { method:'DELETE' });
+      el.remove();
+    });
+    list.appendChild(el);
+  });
+}
+document.getElementById('close-admin').addEventListener('click', ()=>document.getElementById('admin-panel').classList.add('hidden'));
+
+// ── LIST ─────────────────────────────────────────────────────────
+function getSorted() {
+  const s=[...SPOTS];
+  if (currentSort==='alpha') return s.sort((a,b)=>a.name.localeCompare(b.name));
+  if (currentSort==='saved') return s.filter(x=>wishlist.has(x.id));
+  return s.sort((a,b)=>b.rating-a.rating);
+}
+
+function renderList() {
+  const list=document.getElementById('spot-list');
+  const sorted=getSorted();
+  list.innerHTML='';
+  if (currentSort==='saved'&&sorted.length===0) {
+    const msg = currentUser
+      ? '<div style="padding:28px 14px;text-align:center;color:#bbb;font-size:10px;line-height:2;letter-spacing:0.08em;text-transform:uppercase">No saved burgs yet.<br>Tap 🩶 to save a spot.</div>'
+      : '<div style="padding:28px 14px;text-align:center;color:#bbb;font-size:10px;line-height:2;letter-spacing:0.08em;text-transform:uppercase">Sign in to save your burgs.</div>';
+    list.innerHTML = msg;
+    return;
+  }
+  sorted.forEach(s=>{
+    const isWish=wishlist.has(s.id), isSel=selectedId===s.id, isVisited=visitedSpots.has(s.id);
+    const showReason=currentSort==='top'&&!selectedId;
+    const el=document.createElement('div');
+    el.className='spot-item'+(isSel?' selected':'');
+    const dotColor = isWish?'#f97316':'#e800b0';
+    el.innerHTML=`
+      <div class="spot-info">
+        <div class="spot-name" style="display:flex;align-items:center;gap:6px">
+          ${isVisited?'<span style="font-size:12px;line-height:1">🍔</span>':`<span style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block"></span>`}
+          ${s.name}
+        </div>
+        <div class="spot-meta">${s.rating}</div>
+        ${showReason?`<div class="spot-reason show">${s.reason}</div>`:''}
+      </div>
+      <button class="wish-btn ${isWish?'active':''}">${isWish?'🍔':'🩶'}</button>`;
+    el.addEventListener('click', e=>{ if(e.target.classList.contains('wish-btn'))return; selectSpot(s.id); });
+    el.querySelector('.wish-btn').addEventListener('click', async e=>{
+      e.stopPropagation();
+      if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
+      if (wishlist.has(s.id)) { wishlist.delete(s.id); await authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' }); }
+      else { wishlist.add(s.id); await authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) }); }
+      refreshMarkers(); updateSubText(); renderList();
+      if (selectedId===s.id) await showPopup(s);
+    });
+    list.appendChild(el);
+  });
+}
+
+document.querySelectorAll('.sort-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentSort=btn.dataset.sort; renderList();
+}));
+
+// ── SIDEBAR TOGGLE ───────────────────────────────────────────────
+document.getElementById('sidebar-toggle').addEventListener('click', (e)=>{
+  e.stopPropagation(); e.preventDefault();
+  sidebarOpen=!sidebarOpen;
+  const sb=document.getElementById('sidebar'), btn=document.getElementById('sidebar-toggle');
+  sb.classList.toggle('collapsed',!sidebarOpen);
+  btn.classList.toggle('collapsed',!sidebarOpen);
+  btn.style.left=sidebarOpen?'256px':'0px';
+  setTimeout(()=>map.invalidateSize(),300);
+});
+
+// ── BOOT ─────────────────────────────────────────────────────────
+restoreSession().then(()=>{
+  loadSpots().then(async ()=>{
+    setTimeout(()=>map.invalidateSize(), 400);
+    if (currentUser) await loadUserData();
+  });
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
