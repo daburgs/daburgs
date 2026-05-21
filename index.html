@@ -158,13 +158,6 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
   transition:all 0.15s; display:none;
 }
 #popup-log-btn:hover { background:#c700a0; }
-#popup-route-btn {
-  background:transparent; border:1px solid #555; color:#aaa;
-  border-radius:4px; padding:7px 14px; font-size:11px; cursor:pointer;
-  font-family:'DM Mono',monospace; white-space:nowrap; letter-spacing:0.06em;
-  transition:all 0.15s;
-}
-#popup-route-btn:hover { border-color:#e800b0; color:#e800b0; }
 #popup-close {
   background:transparent; border:1px solid #333; color:#555;
   border-radius:4px; padding:7px 14px; font-size:11px; cursor:pointer;
@@ -502,7 +495,6 @@ html,body { height:100%; overflow:hidden; background:#fff; color:#111; font-fami
       </div>
       <div id="popup-actions">
         <button id="popup-log-btn">Log a Burger</button>
-        <button id="popup-route-btn">+ Route</button>
         <button id="popup-wantto">Want to Go</button>
         <button id="popup-close">Close</button>
       </div>
@@ -908,30 +900,6 @@ function openLogModal(spot) {
 document.getElementById('popup-log-btn').addEventListener('click', ()=>{
   const s = SPOTS.find(x=>x.id===selectedId);
   if (s) openLogModal(s);
-});
-document.getElementById('popup-route-btn').addEventListener('click', (e)=>{
-  e.stopPropagation();
-  const spotId = selectedId;
-  const s = SPOTS.find(x=>x.id===spotId);
-  if (!s) { console.log('No spot found for id:', spotId); return; }
-  if (routeStops.find(r=>r.id===s.id)) {
-    routePanelOpen = true;
-    document.getElementById('route-panel').classList.add('visible');
-    showRouteMsg('Already in route');
-    return;
-  }
-  if (routeStops.length >= 3) {
-    routePanelOpen = true;
-    document.getElementById('route-panel').classList.add('visible');
-    showRouteMsg('Max 3 stops per route');
-    return;
-  }
-  routeStops.push(s);
-  renderRouteStops();
-  if (routeStops.length >= 2) drawRouteLine();
-  document.getElementById('popup').classList.remove('visible');
-  routePanelOpen = true;
-  document.getElementById('route-panel').classList.add('visible');
 });
 
 document.getElementById('log-close').addEventListener('click', ()=>
