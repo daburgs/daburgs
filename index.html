@@ -2100,11 +2100,10 @@ function renderList() {
         renderList();
       });
     });
-    el.querySelector('.wish-btn').addEventListener('click', async e=>{
+    el.querySelector('.wish-btn').addEventListener('click', e=>{
       e.stopPropagation();
       if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
       const wasInList = wishlist.has(s.id);
-      // Update UI instantly
       if (wasInList) {
         wishlist.delete(s.id);
         savedOrder = savedOrder.filter(x=>x!==s.id);
@@ -2112,14 +2111,19 @@ function renderList() {
         wishlist.add(s.id);
         savedOrder.push(s.id);
       }
-      refreshMarkers(); updateSubText(); renderList();
+      // Update UI immediately — synchronous
+      refreshMarkers();
+      updateSubText();
+      renderList();
       if (selectedId===s.id) showPopup(s);
-      // Sync to Supabase in background — no await
-      if (wasInList) {
-        authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' });
-      } else {
-        authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) });
-      }
+      // Fire and forget to Supabase
+      setTimeout(()=>{
+        if (wasInList) {
+          authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' });
+        } else {
+          authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) });
+        }
+      }, 0);
     });
     // Touch drag for saved tab reordering
     if (false) { // drag disabled
