@@ -2104,18 +2104,23 @@ function renderList() {
       e.stopPropagation();
       if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
       const wasInList = wishlist.has(s.id);
+      const btn = e.currentTarget;
       if (wasInList) {
         wishlist.delete(s.id);
         savedOrder = savedOrder.filter(x=>x!==s.id);
+        btn.classList.remove('active');
+        btn.textContent = '♡';
       } else {
         wishlist.add(s.id);
         savedOrder.push(s.id);
+        btn.classList.add('active');
+        btn.textContent = '♥';
       }
-      // Update UI immediately — synchronous
+      // Update dot color in same row
+      const dotEl = el.querySelector('span[style*="border-radius:50%"]');
+      if (dotEl) dotEl.style.background = wishlist.has(s.id) ? '#f97316' : '#e800b0';
       refreshMarkers();
       updateSubText();
-      renderList();
-      if (selectedId===s.id) showPopup(s);
       // Fire and forget to Supabase
       setTimeout(()=>{
         if (wasInList) {
