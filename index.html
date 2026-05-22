@@ -803,11 +803,11 @@ function updateSubText() {
 // ── LOAD SPOTS ───────────────────────────────────────────────────
 async function loadSpots() {
   document.getElementById('spot-list').innerHTML =
-    '<div style="padding:28px 14px;text-align:center;color:#bbb;font-size:10px;letter-spacing:0.1em;text-transform:uppercase">Loading…</div>';
+    '<div style="padding:28px 14px;text-align:center;color:#bbb;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;line-height:2">Firing up the grill…</div>';
   const { ok, data } = await api('/rest/v1/spots?approved=eq.true&order=rating.desc');
   if (!ok) {
     document.getElementById('spot-list').innerHTML =
-      '<div style="padding:28px 14px;text-align:center;color:#e800b0;font-size:10px;letter-spacing:0.1em;text-transform:uppercase">Could not load spots.</div>';
+      '<div style="padding:28px 14px;text-align:center;color:#e800b0;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;line-height:2">The grill went cold.<br>Check your connection<br>and try again. 🍔</div>';
     return;
   }
   Object.values(markers).forEach(m => map.removeLayer(m));
@@ -2064,24 +2064,25 @@ function renderList() {
     el.className='spot-item'+(isSel?' selected':'');
     const dotColor = isWish?'#f97316':'#e800b0';
     const spotIdx = sorted.indexOf(s);
-    const moveButtons = currentSort==='saved' ? `
-      <div style="display:flex;flex-direction:column;gap:2px;margin-right:6px;flex-shrink:0;">
-        ${spotIdx > 0 ? `<button class="move-btn" data-dir="up" data-sid="${s.id}" style="background:#f0f0f0;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;">↑</button>` : '<div style="width:22px;height:22px;"></div>'}
-        ${spotIdx < sorted.length-1 ? `<button class="move-btn" data-dir="down" data-sid="${s.id}" style="background:#f0f0f0;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;">↓</button>` : '<div style="width:22px;height:22px;"></div>'}
-      </div>` : '';
-    el.innerHTML=`
-      <div class="spot-info" style="display:flex;align-items:center;gap:4px">
-        ${moveButtons}
-        <div style="flex:1;min-width:0">
-          <div class="spot-name" style="display:flex;align-items:center;gap:6px">
-            ${isVisited?'<span style="font-size:12px;line-height:1">🍔</span>':`<span style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block"></span>`}
-            ${s.name}
-          </div>
-          <div class="spot-meta">${s.rating}</div>
-          ${showReason?`<div class="spot-reason show">${s.reason}</div>`:''}
-        </div>
-      </div>
-      <button class="wish-btn ${isWish?'active':''}" title="${isWish?'Remove from list':'Want to go'}">${isWish?'♥':'♡'}</button>`;
+    // Build move buttons safely without nested template literals
+    let moveButtons = '';
+    if (currentSort==='saved') {
+      const upBtn = spotIdx > 0 ? '<button class="move-btn" data-dir="up" data-sid="'+s.id+'" style="background:#f0f0f0;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;">↑</button>' : '<div style="width:22px;height:22px;"></div>';
+      const dnBtn = spotIdx < sorted.length-1 ? '<button class="move-btn" data-dir="down" data-sid="'+s.id+'" style="background:#f0f0f0;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;">↓</button>' : '<div style="width:22px;height:22px;"></div>';
+      moveButtons = '<div style="display:flex;flex-direction:column;gap:2px;margin-right:6px;flex-shrink:0;">'+upBtn+dnBtn+'</div>';
+    }
+    const dotSpan = isVisited ? '<span style="font-size:12px;line-height:1">🍔</span>' : '<span style="width:7px;height:7px;border-radius:50%;background:'+dotColor+';flex-shrink:0;display:inline-block"></span>';
+    const reasonHtml = showReason ? '<div class="spot-reason show">'+s.reason+'</div>' : '';
+    el.innerHTML =
+      '<div class="spot-info" style="display:flex;align-items:center;gap:4px">' +
+        moveButtons +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="spot-name" style="display:flex;align-items:center;gap:6px">' + dotSpan + s.name + '</div>' +
+          '<div class="spot-meta">' + s.rating + '</div>' +
+          reasonHtml +
+        '</div>' +
+      '</div>' +
+      '<button class="wish-btn '+(isWish?'active':'')+'" title="'+(isWish?'Remove from list':'Want to go')+'">'+(isWish?'🍔':'🩶')+'</button>';
     el.addEventListener('click', e=>{
       if(e.target.classList.contains('wish-btn')) return;
       if(e.target.classList.contains('move-btn')) return;
@@ -2104,77 +2105,12 @@ function renderList() {
       e.stopPropagation();
       if (!currentUser) { document.getElementById('auth-modal').classList.remove('hidden'); return; }
       const wasInList = wishlist.has(s.id);
-      const btn = e.currentTarget;
-      if (wasInList) {
-        wishlist.delete(s.id);
-        savedOrder = savedOrder.filter(x=>x!==s.id);
-        btn.classList.remove('active');
-        btn.textContent = '♡';
-      } else {
-        wishlist.add(s.id);
-        savedOrder.push(s.id);
-        btn.classList.add('active');
-        btn.textContent = '♥';
-      }
-      // Update dot color in same row
-      const dotEl = el.querySelector('span[style*="border-radius:50%"]');
-      if (dotEl) dotEl.style.background = wishlist.has(s.id) ? '#f97316' : '#e800b0';
-      refreshMarkers();
-      updateSubText();
-      // Fire and forget to Supabase
-      setTimeout(()=>{
-        if (wasInList) {
-          authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' });
-        } else {
-          authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) });
-        }
-      }, 0);
+      if (wasInList) { wishlist.delete(s.id); savedOrder = savedOrder.filter(x=>x!==s.id); }
+      else { wishlist.add(s.id); savedOrder.push(s.id); }
+      refreshMarkers(); updateSubText(); renderList();
+      if (wasInList) authApi(`/rest/v1/saves?user_id=eq.${currentUser.id}&spot_id=eq.${s.id}`, { method:'DELETE' });
+      else authApi('/rest/v1/saves', { method:'POST', headers:authHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({ user_id:currentUser.id, spot_id:s.id }) });
     });
-    // Touch drag for saved tab reordering
-    if (false) { // drag disabled
-      let dragStartY, dragEl, dragIdx;
-      el.addEventListener('touchstart', (e)=>{
-        if (e.target.classList.contains('wish-btn')) return;
-        dragStartY = e.touches[0].clientY;
-        dragEl = el;
-        dragIdx = [...list.querySelectorAll('.spot-item')].indexOf(el);
-        el.style.background = '#f0f0f0';
-      }, { passive:true });
-      el.addEventListener('touchmove', (e)=>{
-        if (!dragEl) return;
-        e.preventDefault();
-        const dy = e.touches[0].clientY - dragStartY;
-        dragEl.style.transform = `translateY(${dy}px)`;
-        dragEl.style.zIndex = '999';
-        dragEl.style.opacity = '0.8';
-        dragEl.style.position = 'relative';
-      }, { passive:false });
-      el.addEventListener('touchend', (e)=>{
-        if (!dragEl) return;
-        const dy = e.changedTouches[0].clientY - dragStartY;
-        dragEl.style.transform = '';
-        dragEl.style.zIndex = '';
-        dragEl.style.opacity = '1';
-        dragEl.style.position = '';
-        dragEl.style.background = '';
-        const itemH = 60;
-        const steps = Math.round(dy / itemH);
-        if (steps !== 0) {
-          // Reorder wishlist array
-          const wishArr = [...wishlist];
-          const spotIds = sorted.map(x=>x.id);
-          const fromId = spotIds[dragIdx];
-          const newIdx = Math.max(0, Math.min(spotIds.length-1, dragIdx + steps));
-          spotIds.splice(dragIdx, 1);
-          spotIds.splice(newIdx, 0, fromId);
-          // Rebuild wishlist in new order
-          wishlist = new Set(spotIds.filter(id=>wishlist.has(id)));
-          renderList();
-        }
-        dragEl = null;
-      });
-    }
-
     list.appendChild(el);
   });
 }
@@ -2187,19 +2123,22 @@ document.querySelectorAll('.sort-btn').forEach(btn=>btn.addEventListener('click'
 // ── SIDEBAR TOGGLE ───────────────────────────────────────────────
 // ── SIDEBAR TOGGLE ───────────────────────────────────────────────
 function positionToggle() {
-  const sb = document.getElementById('sidebar');
-  const btn = document.getElementById('sidebar-toggle');
-  const w = sb.getBoundingClientRect().width;
-  btn.style.left = w + 'px';
+  try {
+    const sb = document.getElementById('sidebar');
+    const btn = document.getElementById('sidebar-toggle');
+    if (!sb || !btn) return;
+    const w = sb.getBoundingClientRect().width;
+    btn.style.left = w + 'px';
+  } catch(e) {}
 }
 
-// Keep toggle in sync with sidebar animation
-const sidebarEl = document.getElementById('sidebar');
-if (window.ResizeObserver) {
-  new ResizeObserver(positionToggle).observe(sidebarEl);
-} else {
-  positionToggle();
-}
+try {
+  const sidebarEl = document.getElementById('sidebar');
+  if (window.ResizeObserver && sidebarEl) {
+    new ResizeObserver(positionToggle).observe(sidebarEl);
+  }
+} catch(e) {}
+positionToggle();
 
 document.getElementById('sidebar-toggle').addEventListener('click', (e)=>{
   e.stopPropagation(); e.preventDefault();
@@ -2269,6 +2208,10 @@ function updateGolfMarkers() {
 map.on('zoomend', updateGolfMarkers);
 
 // ── BOOT ─────────────────────────────────────────────────────────
+window.onerror = (msg, src, line) => {
+  document.getElementById('spot-list').innerHTML =
+    '<div style="padding:14px;color:#e800b0;font-size:10px;word-break:break-all">ERR: '+msg+' (line '+line+')</div>';
+};
 loadBtnMode();
 restoreSession().then(()=>{
   loadSpots().then(async ()=>{
